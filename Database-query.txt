@@ -1,0 +1,72 @@
+-- 1. Tạo bảng Roles
+
+CREATE TABLE Roles (
+    RoleID INT PRIMARY KEY,              -- Khóa chính, không phải tự tăng để chúng ta có thể gán ID thủ công.
+    RoleName VARCHAR(50) NOT NULL UNIQUE
+);
+
+--Thêm 2 role là Admin và Guest
+
+INSERT INTO Roles (RoleID, RoleName) VALUES 
+(1, 'Admin'),
+(2, 'Guest');
+
+-- 2. Tạo bảng Accounts với khóa ngoại RoleID
+CREATE TABLE Accounts (
+    AccountID INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL UNIQUE,
+    Email VARCHAR(100) NOT NULL UNIQUE,
+    PasswordHash VARCHAR(255) NOT NULL, -- Đổi thành 255 cho an toàn về sau
+    FullName VARCHAR(100) DEFAULT NULL, -- Thêm tên hiển thị (cho phép để trống lúc đầu)
+    RoleID INT NOT NULL DEFAULT 2,      -- Mặc định là 2 (Guest) nếu code quên truyền vào
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Tự động lưu thời gian tạo
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID)
+);
+
+-- 3. Tạo bảng Danh mục phòng (Ví dụ: Standard, VIP, Suite...)
+CREATE TABLE Categories (
+    CategoryID INT AUTO_INCREMENT PRIMARY KEY,
+    CategoryName VARCHAR(100) NOT NULL,
+    Description TEXT
+);
+
+-- 4. Tạo bảng Phòng (Lưu thông tin từng phòng)
+CREATE TABLE Rooms (
+    RoomID INT AUTO_INCREMENT PRIMARY KEY,
+    RoomName VARCHAR(100) NOT NULL, -- Tên phòng (VD: Phòng 101)
+    CategoryID INT,                 -- Thuộc danh mục nào
+    Price DECIMAL(10, 0) NOT NULL,  -- Giá phòng (VNĐ)
+    Status ENUM('available', 'maintenance') DEFAULT 'available', -- Trạng thái
+    Description TEXT,               -- Mô tả chi tiết
+    ImageURL VARCHAR(500),          -- Link ảnh
+    Address VARCHAR(255),	    -- Địa chỉ
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID) ON DELETE SET NULL
+);
+
+-- 5. Tạo bảng Đặt phòng
+CREATE TABLE Bookings (
+    BookingID INT AUTO_INCREMENT PRIMARY KEY,
+    AccountID INT NOT NULL,  -- Người đặt phòng
+    RoomID INT NOT NULL,     -- Phòng được đặt
+    -- Ngày nhận phòng (Check-in) và Trả phòng (Check-out)
+    CheckInDate DATE,
+    CheckOutDate DATE,
+    BookingDate DATETIME DEFAULT CURRENT_TIMESTAMP, -- Ngày đơn hàng được tạo
+    Status ENUM('Pending', 'Confirmed', 'CheckedIn', 'CheckedOut', 'Cancelled') DEFAULT 'Pending', 
+    FOREIGN KEY (AccountID) REFERENCES Accounts(AccountID),
+    FOREIGN KEY (RoomID) REFERENCES Rooms(RoomID)
+);
+
+-- 6. Tạo bảng Đánh giá
+CREATE TABLE Reviews (
+    ReviewID INT AUTO_INCREMENT PRIMARY KEY,
+    RoomID INT NOT NULL,
+    AccountID INT NOT NULL,
+    BookingID INT NOT NULL, -- <--- QUAN TRỌNG: Liên kết review với đơn đặt phòng
+    Rating DECIMAL(3, 1) CHECK (Rating >= 0 AND Rating <= 10),
+    Comment TEXT,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (RoomID) REFERENCES Rooms(RoomID) ON DELETE CASCADE,
+    FOREIGN KEY (AccountID) REFERENCES Accounts(AccountID) ON DELETE CASCADE,
+    FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID) ON DELETE CASCADE
+);

@@ -1,0 +1,836 @@
+/* ================= GLOBAL & BODY ================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f5f7fa;
+    color: #333;
+}
+
+/* ================= HEADER ================= */
+header {
+    background-color: #003580; /* Xanh đậm */
+    color: white;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar {
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+    text-decoration: none;
+}
+
+/* Nút Auth (Login/Register) */
+.auth-buttons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.auth-buttons a {
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.btn-login {
+    color: white;
+    background-color: #007bff;
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: 1px solid #007bff;
+}
+.btn-login:hover { background-color: #0056b3; }
+
+.btn-register {
+    color: white;
+    background-color: #007bff;
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: 1px solid #007bff;
+}
+.btn-register:hover { background-color: rgba(255,255,255,0.1); }
+
+.user-welcome { font-weight: bold; margin-right: 10px; }
+.btn-logout { background-color: #dc3545; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+
+/* ================= HERO BANNER ================= */
+.hero {
+    /* Ảnh nền + Lớp phủ tối màu */
+    background: linear-gradient(rgba(0,53,128,0.7), rgba(0,53,128,0.7)), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3');
+    background-size: cover;
+    background-position: center;
+    height: 320px; /* Chiều cao banner */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white;
+    margin-bottom: 40px; /* Khoảng cách để thanh tìm kiếm đè lên */
+}
+
+.hero h1 { font-size: 38px; margin-bottom: 10px; }
+.hero p { font-size: 18px; opacity: 0.9; }
+
+/* ================= SEARCH BAR CONTAINER (QUAN TRỌNG) ================= */
+.search-container {
+    max-width: 1140px;
+    margin: -35px auto 40px auto; /* Kéo lên -35px để đè vào banner */
+    padding: 0 15px;
+    position: relative;
+    z-index: 10;
+}
+
+.search-bar {
+    background: white;
+    padding: 4px; /* Viền trong nhỏ */
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: stretch; /* Kéo giãn các ô bằng nhau */
+    border: 3px solid #febb02; /* Viền vàng */
+    flex-wrap: wrap;
+}
+
+/* Các ô tìm kiếm con */
+.search-item {
+    flex: 1; /* Chia đều không gian */
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    min-width: 200px;
+    background: white;
+    position: relative; /* Để dropdown bám theo */
+    border-right: 3px solid #febb02; /* Vạch kẻ dọc vàng */
+}
+
+/* Ô cuối cùng không cần gạch dọc */
+.search-item:last-of-type {
+    border-right: none;
+}
+
+/* Icon */
+.search-item i {
+    color: #6b6b6b;
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+/* Input chung */
+.search-item input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    background: transparent;
+}
+
+/* Style riêng cho Input Date có Label */
+.date-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.date-label {
+    font-size: 12px;
+    color: #333;
+    font-weight: normal;
+    margin-bottom: 2px;
+}
+
+/* Nút Tìm kiếm */
+.btn-search {
+    background-color: #0071c2;
+    color: white;
+    border: none;
+    padding: 0 30px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    min-width: 120px;
+}
+.btn-search:hover { background-color: #005999; }
+
+/* ================= DROPDOWN GỢI Ý ĐỊA ĐIỂM ================= */
+.location-wrap { position: relative; } /* Để dropdown absolute theo nó */
+
+.search-floating-menu {
+    display: none; /* Mặc định ẩn */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%; /* Rộng bằng ô input cha */
+    min-width: 300px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    margin-top: 10px;
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-floating-menu ul { list-style: none; padding: 0; margin: 0; }
+
+.search-floating-menu li {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+}
+
+.search-floating-menu li:hover {
+    background-color: #f2f2f2;
+}
+
+.search-floating-menu i { margin-right: 10px; color: #666; }
+
+/* ================= DANH SÁCH PHÒNG (GRID) ================= */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 50px 20px;
+}
+
+.section-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.room-grid {
+    display: grid;
+    /* Tự động chia cột: Tối thiểu 300px, còn lại chia đều */
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+}
+
+/* Thẻ Phòng (Card) - Do JS tạo ra */
+.room-card {
+    background: white;
+    border: 1px solid #e7e7e7;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.room-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.room-img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+}
+
+.room-info {
+    padding: 16px;
+    flex: 1; /* Đẩy nội dung chiếm hết chiều cao */
+    display: flex;
+    flex-direction: column;
+}
+
+.room-cat {
+    font-size: 12px;
+    color: #0071c2;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.room-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+}
+
+.room-address {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 10px;
+    text-decoration: underline; /* Giống Booking */
+}
+
+.room-desc {
+    font-size: 14px;
+    color: #6b6b6b;
+    margin-bottom: 15px;
+    /* Cắt bớt chữ nếu quá dài */
+    display: -webkit-box;
+    /* -webkit-line-clamp: 3; */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.room-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    text-align: right;
+    margin-top: auto; /* Đẩy xuống đáy */
+    margin-bottom: 10px;
+}
+
+.btn-book {
+    width: 100%;
+    background-color: #0071c2;
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-book:hover { background-color: #005999; }
+
+/* ================= RESPONSIVE (MOBILE) ================= */
+@media (max-width: 768px) {
+    .search-bar {
+        flex-direction: column;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .search-item, .btn-search {
+        width: 100%;
+        margin-bottom: 10px;
+        border: 3px solid #febb02; /* Viền vàng cho từng ô trên mobile */
+        border-radius: 4px;
+    }
+    
+    .btn-search {
+        padding: 12px;
+    }
+}
+
+/* Biến con trỏ chuột thành bàn tay khi hover vào ô ngày tháng */
+.search-item.date-item {
+    cursor: pointer;
+}
+
+/* Đảm bảo label và icon không chặn sự kiện click */
+.search-item.date-item label,
+.search-item.date-item i {
+    cursor: pointer;
+    pointer-events: none; /* Cho phép click xuyên qua label/icon xuống div cha */
+}
+
+/* Input date cũng phải có con trỏ pointer */
+.search-item input[type="date"] {
+    cursor: pointer;
+}
+
+/* ================= DESTINATION GRID (ĐIỂM ĐẾN) ================= */
+.section-desc {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* LƯỚI BỐ CỤC: Chia thành 6 cột ảo để dễ xếp layout 2-3 */
+.destination-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 15px;
+    margin-bottom: 50px;
+}
+
+/* THẺ CARD CHUNG */
+.dest-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    height: 270px; /* Chiều cao cố định */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.dest-card:hover {
+    transform: scale(1.02); /* Phóng to nhẹ khi di chuột */
+}
+
+.dest-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 0.3s;
+}
+
+/* LỚP PHỦ MỜ (Gradient) để chữ trắng dễ đọc trên nền ảnh */
+.dest-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Gradient đen mờ từ trên xuống */
+    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%);
+    padding: 20px;
+}
+
+/* CHỮ TIÊU ĐỀ + CỜ */
+.dest-overlay h3 {
+    color: white;
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center; /* Căn giữa cờ với chữ */
+    gap: 10px;
+}
+
+/* ĐỊNH DẠNG LÁ CỜ */
+.dest-flag {
+    width: 24px !important;  /* Kích thước nhỏ */
+    height: auto !important;
+    border-radius: 2px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    object-fit: contain !important; /* Đảm bảo cờ không bị méo */
+}
+
+/* --- LOGIC CHIA CỘT --- */
+
+/* Ảnh lớn (Hàng 1): Chiếm 3/6 cột (tức là 50%) */
+.dest-large {
+    grid-column: span 3;
+}
+
+/* Ảnh nhỏ (Hàng 2): Mặc định chiếm 2/6 cột (tức là 33.33%) */
+.dest-card:not(.dest-large) {
+    grid-column: span 2;
+}
+
+/* --- RESPONSIVE CHO ĐIỆN THOẠI --- */
+@media (max-width: 768px) {
+    .destination-grid {
+        grid-template-columns: 1fr; /* Về 1 cột duy nhất */
+    }
+    .dest-large, .dest-card:not(.dest-large) {
+        grid-column: span 1; /* Tất cả full chiều rộng */
+        height: 200px;
+    }
+}
+
+
+/* ================= REVIEW SUMMARY (TỔNG KẾT ĐÁNH GIÁ) ================= */
+.review-summary {
+    display: flex;
+    align-items: center; /* Căn giữa theo chiều dọc */
+    gap: 10px;           /* Khoảng cách giữa ô điểm và chữ */
+    margin: 10px 0;      /* Cách trên dưới một chút cho thoáng */
+}
+
+/* Ô vuông màu xanh chứa điểm số (VD: 8.7) */
+.review-score-box {
+    background-color: #003580; /* Xanh đậm */
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px;
+    border-radius: 6px 6px 6px 0; /* Bo góc điệu đà giống mẫu */
+    min-width: 35px;
+    text-align: center;
+    line-height: 1;
+}
+
+/* Phần chữ bên cạnh */
+.review-details {
+    display: flex;
+    flex-direction: column; /* Xếp chồng chữ "Tuyệt vời" lên trên "x đánh giá" */
+    justify-content: center;
+    line-height: 1.3;
+}
+
+/* Chữ "Tuyệt vời", "Xuất sắc"... */
+.review-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* Dòng "772 đánh giá" */
+.review-count-text {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Style cho từng bình luận trong Modal */
+.review-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 12px;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.review-user-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.review-score-tag {
+    background: #003580;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.review-text {
+    color: #555;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.review-date {
+    font-size: 11px;
+    color: #999;
+    margin-top: 5px;
+    text-align: right;
+    font-style: italic;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    /* Flexbox giúp căn giữa cả chiều ngang và dọc */
+    justify-content: center; 
+    align-items: center;
+}
+
+.modal-box {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 600px;
+    max-width: 90%;
+    max-height: 80vh; /* Chiều cao tối đa bằng 80% màn hình */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    margin: auto; 
+}
+
+/* Đảm bảo container chứa danh sách bình luận có thanh cuộn */
+#reviews-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-top: 15px;
+}
+
+/* ================= GUESTS SELECTOR ================= */
+.guests-wrap {
+    position: relative;
+}
+
+.guests-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    cursor: pointer;
+}
+
+.guests-label {
+    font-size: 12px;
+    color: #333;
+    font-weight: normal;
+    margin-bottom: 2px;
+}
+
+#guests-display {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.guests-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    min-width: 320px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin-top: 10px;
+    z-index: 100;
+    padding: 20px;
+}
+
+.guests-dropdown.show {
+    display: block;
+}
+
+.guests-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.guests-option:last-of-type {
+    border-bottom: none;
+}
+
+.guests-option-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.guests-counter {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.counter-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #d0d0d0;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.counter-btn:hover {
+    background: #f0f0f0;
+    border-color: #0071c2;
+}
+
+.counter-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.counter-value {
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+}
+
+.guests-done-btn {
+    width: 100%;
+    padding: 12px;
+    background: #0071c2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.2s;
+}
+
+.guests-done-btn:hover {
+    background: #005999;
+}
+
+/* ================= FOOTER STYLES ================= */
+.site-footer {
+    background-color: #003580; /* Màu xanh đậm thương hiệu Booking */
+    color: #ffffff;
+    padding-top: 60px;
+    margin-top: 50px; /* Cách phần nội dung bên trên */
+    font-size: 14px;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 30px;
+}
+
+.footer-col {
+    flex: 1;
+    min-width: 250px;
+    margin-bottom: 30px;
+}
+
+.footer-col h3 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.footer-col h4 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    position: relative;
+    padding-bottom: 10px;
+}
+
+/* Gạch chân dưới tiêu đề */
+.footer-col h4::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 50px;
+    height: 2px;
+    background-color: #febb02; /* Màu vàng điểm nhấn */
+}
+
+.footer-col p {
+    line-height: 1.6;
+    color: #e0e0e0;
+}
+
+.footer-col ul {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-col ul li {
+    margin-bottom: 10px;
+}
+
+.footer-col ul li a {
+    color: #e0e0e0;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.footer-col ul li a:hover {
+    color: #febb02;
+    padding-left: 5px; /* Hiệu ứng đẩy chữ sang phải */
+}
+
+/* Social Icons */
+.social-links {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+.social-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.social-links a:hover {
+    background: #febb02;
+    color: #003580;
+    transform: translateY(-3px);
+}
+
+/* Contact Icons */
+.contact-info i {
+    margin-right: 10px;
+    color: #febb02;
+    width: 20px;
+    text-align: center;
+}
+
+/* Footer Bottom */
+.footer-bottom {
+    background-color: #00224f; /* Màu đậm hơn chút */
+    text-align: center;
+    padding: 20px;
+    margin-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer-bottom p {
+    margin: 0;
+    color: #aaa;
+    font-size: 13px;
+}
+
+/* Responsive cho Mobile */
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+    }
+    .footer-col {
+        margin-bottom: 20px;
+    }
+}
+
+.btn-map-small {
+    background: none;
+    border: none;
+    color: #007bff; /* Màu xanh Booking */
+    font-weight: bold;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0;
+}
+
+.btn-map-small:hover {
+    color: #0056b3;
+}

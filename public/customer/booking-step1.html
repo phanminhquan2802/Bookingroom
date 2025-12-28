@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết của bạn - Booking Hotel</title>
+    <link rel="stylesheet" href="style-home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .booking-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .booking-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .booking-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+        }
+
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .step:last-child::after {
+            display: none;
+        }
+
+        .step.active::after {
+            background: #0071c2;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step.active .step-number {
+            background: #0071c2;
+            color: white;
+        }
+
+        .step.completed .step-number {
+            background: #28a745;
+            color: white;
+        }
+
+        .step.completed .step-number::before {
+            content: '✓';
+        }
+
+        .step-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .step.active .step-label {
+            color: #0071c2;
+            font-weight: 600;
+        }
+
+        .booking-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .booking-form-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .booking-summary-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #003580;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0071c2;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .phone-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .phone-input-group select {
+            width: 120px;
+        }
+
+        .phone-input-group input {
+            flex: 1;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-top: 3px;
+        }
+
+        .checkbox-group label {
+            font-size: 14px;
+            color: #666;
+            font-weight: normal;
+        }
+
+        .hotel-info-card {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .hotel-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .hotel-details h3 {
+            margin: 0 0 10px 0;
+            color: #003580;
+            font-size: 18px;
+        }
+
+        .hotel-details p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .booking-details {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .booking-details-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .booking-details-item label {
+            color: #666;
+        }
+
+        .booking-details-item span {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .price-summary {
+            margin-bottom: 20px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .price-row.total {
+            font-size: 20px;
+            font-weight: bold;
+            color: #003580;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+            margin-top: 15px;
+        }
+
+        .price-note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .payment-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .payment-info h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .payment-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .cancellation-info {
+            margin-bottom: 20px;
+        }
+
+        .cancellation-info h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .cancellation-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn-next {
+            width: 100%;
+            background: #0071c2;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-next:hover {
+            background: #005999;
+        }
+
+        .btn-next:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .tip-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0071c2;
+        }
+
+        .tip-box h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #0071c2;
+        }
+
+        .tip-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .special-requests {
+            margin-top: 20px;
+        }
+
+        .special-requests textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .arrival-time {
+            margin-top: 20px;
+        }
+
+        @media (max-width: 968px) {
+            .booking-content {
+                grid-template-columns: 1fr;
+            }
+
+            .booking-summary-section {
+                position: static;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="index.html" class="logo">Booking Hotel</a>
+            <div class="auth-buttons" id="auth-section"></div>
+        </div>
+    </header>
+
+    <div class="booking-container">
+        <div class="booking-header">
+            <div class="booking-steps">
+                <div class="step completed">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Bạn chọn</div>
+                </div>
+                <div class="step active">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Chi tiết về bạn</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Hoàn tất đặt phòng</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-content">
+            <!-- Form điền thông tin -->
+            <div class="booking-form-section">
+                <h2 class="section-title">Nhập thông tin chi tiết của bạn</h2>
+                
+                <form id="booking-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="last-name">Họ *</label>
+                            <input type="text" id="last-name" name="lastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="first-name">Tên *</label>
+                            <input type="text" id="first-name" name="firstName" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Địa chỉ email của bạn *</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm-email">Xác nhận địa chỉ email của bạn *</label>
+                        <input type="email" id="confirm-email" name="confirmEmail" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Số điện thoại *</label>
+                        <div class="phone-input-group">
+                            <select id="country-code" name="countryCode">
+                                <option value="+84">+84 (VN)</option>
+                                <option value="+1">+1 (US)</option>
+                                <option value="+44">+44 (UK)</option>
+                                <option value="+86">+86 (CN)</option>
+                            </select>
+                            <input type="tel" id="phone" name="phone" required>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="business-travel" name="businessTravel">
+                        <label for="business-travel">Tôi đang đi công tác</label>
+                    </div>
+
+                    <div class="tip-box">
+                        <h4><i class="fas fa-info-circle"></i> Mách nhỏ</h4>
+                        <p><strong>Nhận phòng:</strong> <span id="tip-checkin-time"></span></p>
+                        <p><strong>Trả phòng:</strong> <span id="tip-checkout-time"></span></p>
+                        <p><strong>Thanh toán:</strong> Bạn sẽ thanh toán khi đến nơi</p>
+                    </div>
+
+                    <div class="special-requests">
+                        <div class="form-group">
+                            <label for="special-requests">Các Yêu Cầu Đặc Biệt</label>
+                            <textarea id="special-requests" name="specialRequests" placeholder="Vui lòng cho chúng tôi biết nếu bạn có yêu cầu đặc biệt nào..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="arrival-time">
+                        <div class="form-group">
+                            <label for="arrival-time">Thời gian đến của bạn</label>
+                            <select id="arrival-time" name="arrivalTime">
+                                <option value="">Chọn thời gian</option>
+                                <option value="14:00">14:00</option>
+                                <option value="15:00">15:00</option>
+                                <option value="16:00">16:00</option>
+                                <option value="17:00">17:00</option>
+                                <option value="18:00">18:00</option>
+                                <option value="19:00">19:00</option>
+                                <option value="20:00">20:00</option>
+                                <option value="21:00">21:00</option>
+                                <option value="22:00">22:00</option>
+                                <option value="23:00">23:00</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-next">
+                        Tiếp theo: Chi tiết cuối cùng
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tóm tắt đặt phòng -->
+            <div class="booking-summary-section">
+                <div class="hotel-info-card">
+                    <img id="hotel-image" src="" alt="Hotel" class="hotel-image">
+                    <div class="hotel-details">
+                        <h3 id="hotel-name">Đang tải...</h3>
+                        <p id="hotel-address">Đang tải...</p>
+                        <p id="hotel-rating"></p>
+                    </div>
+                </div>
+
+                <div class="booking-details">
+                    <h4 style="margin-bottom: 15px; color: #333;">Chi tiết đặt phòng của bạn</h4>
+                    <div class="booking-details-item" id="room-type-item" style="display: none;">
+                        <label>Loại phòng:</label>
+                        <span id="summary-room-type"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Nhận phòng:</label>
+                        <span id="summary-checkin"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Trả phòng:</label>
+                        <span id="summary-checkout"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Tổng thời gian lưu trú:</label>
+                        <span id="summary-duration"></span>
+                    </div>
+                </div>
+
+                <div class="price-summary">
+                    <h4 style="margin-bottom: 15px; color: #333;">Tóm tắt giá</h4>
+                    <div class="price-row">
+                        <span>Giá gốc:</span>
+                        <span id="original-price" style="text-decoration: line-through; color: #999;"></span>
+                    </div>
+                    <div class="price-row" id="discount-row" style="display: none;">
+                        <span>Giảm giá:</span>
+                        <span id="discount-amount" style="color: #28a745;"></span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Tổng cộng:</span>
+                        <span id="total-price"></span>
+                    </div>
+                    <div class="price-note">Đã bao gồm thuế và phí</div>
+                </div>
+
+                <div class="payment-info">
+                    <h4>Lịch thanh toán của bạn</h4>
+                    <p>Không cần thanh toán hôm nay. Bạn sẽ trả khi đến nghỉ.</p>
+                </div>
+
+                <div class="cancellation-info">
+                    <h4>Chi phí hủy là bao nhiêu?</h4>
+                    <p id="cancellation-policy">Hủy miễn phí trước ngày nhận phòng</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="booking-step1.js"></script>
+</body>
+</html>
+

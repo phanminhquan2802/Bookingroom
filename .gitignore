@@ -1,0 +1,8 @@
+# Bỏ qua thư mục thư viện nặng
+node_modules/
+
+# Bỏ qua file chứa mật khẩu database
+.env
+
+# Bỏ qua file hệ thống
+.DS_Store

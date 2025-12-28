@@ -1,0 +1,89 @@
+/* Thiết lập cơ bản cho toàn bộ trang */
+body {
+    font-family: Arial, sans-serif;
+    /* Loại bỏ background-color cũ hoặc để dự phòng */
+    /* background-color: #f4f4f9; */ 
+    
+    /* === BẮT ĐẦU CÁC DÒNG MỚI CHO ẢNH NỀN === */
+    background-image: url('https://adfcons.vn/uploads/images/M%E1%BA%ABu%20kh%C3%A1ch%20s%E1%BA%A1n/KS-2457/8.jpg'); /* Thay 'villa-beach-view.jpg' bằng tên file ảnh của bạn */
+    background-size: cover; /* Đảm bảo ảnh nền phủ kín toàn bộ màn hình */
+    background-position: center; /* Căn giữa ảnh nền */
+    background-repeat: no-repeat; /* Không lặp lại ảnh nền */
+    background-attachment: fixed; /* Giữ ảnh nền cố định khi cuộn (tùy chọn) */
+    /* === KẾT THÚC CÁC DÒNG MỚI CHO ẢNH NỀN === */
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Định dạng container chứa form */
+.login-container {
+    background: rgba(255, 255, 255, 0.85); /* Thêm độ trong suốt (opacity) cho nền trắng của form */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Tăng cường bóng đổ để nổi bật */
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Các phần CSS khác giữ nguyên */
+.login-form h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"],
+.input-group input[type="email"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; 
+    font-size: 16px;
+}
+
+.login-button {
+    width: 100%;
+    background-color: #007bff;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s;
+}
+
+.login-button:hover {
+    background-color: #0056b3;
+}
+
+.footer-text {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.footer-text a {
+    color: #007bff;
+    text-decoration: none;
+}
+

@@ -1,0 +1,177 @@
+/* ================= 1. CẤU HÌNH CƠ BẢN ================= */
+* { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+body { display: flex; height: 100vh; background: #f4f6f9; overflow-x: hidden; }
+
+/* ================= 2. SIDEBAR (MENU TRÁI) ================= */
+.sidebar { 
+    width: 260px; /* Chiều rộng mặc định */
+    background: #343a40; 
+    color: #fff; 
+    display: flex; 
+    flex-direction: column;
+    transition: all 0.3s ease; /* Hiệu ứng trượt mượt mà */
+    flex-shrink: 0; 
+    overflow: hidden; /* Ẩn nội dung thừa khi thu nhỏ */
+    white-space: nowrap; /* Không xuống dòng */
+}
+
+/* --- Sidebar Header: Chứa Tiêu đề & Nút Toggle --- */
+.sidebar-header { 
+    background: #212529; 
+    border-bottom: 1px solid #4b545c; 
+    height: 70px; 
+    padding: 0 20px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; /* Đẩy chữ sang trái, nút sang phải */
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Nút 3 gạch (Toggle) --- */
+.btn-toggle { 
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.btn-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #007bff;
+}
+
+/* --- Danh sách Menu --- */
+.sidebar-menu { list-style: none; margin-top: 20px; flex-grow: 1; }
+
+.menu-item a { 
+    display: flex; 
+    align-items: center;
+    padding: 15px 20px; 
+    color: #c2c7d0; 
+    text-decoration: none; 
+    transition: 0.3s; 
+    border-left: 4px solid transparent;
+}
+.menu-item a:hover, .menu-item.active a { background: #495057; color: #fff; border-left-color: #007bff; }
+.menu-item i { margin-right: 15px; width: 25px; text-align: center; font-size: 18px; }
+
+/* --- Footer (Nút Đăng xuất) --- */
+.sidebar-footer { padding: 20px; border-top: 1px solid #4b545c; }
+#logout-btn { width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 10px; }
+#logout-btn:hover { background: #c82333; }
+
+/* ================= 3. CONTENT (NỘI DUNG PHẢI) ================= */
+.main-content { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    overflow-y: auto; 
+    transition: all 0.3s ease; 
+}
+
+header { 
+    background: #fff; 
+    padding: 20px 30px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-start; 
+    gap: 20px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+}
+header .user-info { margin-left: auto; }
+
+main { padding: 30px; }
+.content-section { display: none; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+.content-section.active-section { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ================= 4. UI COMPONENTS (Bảng, Nút, Modal...) ================= */
+.table-responsive { overflow-x: auto; margin-top: 20px; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #dee2e6; }
+.data-table th { background: #f8f9fa; color: #495057; }
+.table-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+
+.btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+.btn-primary { background: #007bff; } .btn-primary:hover { background: #0056b3; }
+.btn-warning { background: #ffc107; color: #212529; } .btn-warning:hover { background: #e0a800; }
+.btn-danger { background: #dc3545; } .btn-danger:hover { background: #c82333; }
+.btn-success { background: #28a745; } .btn-success:hover { background: #218838; }
+.btn-sm { padding: 5px 10px; font-size: 12px; margin-right: 5px; }
+.section-actions { text-align: right; margin-bottom: 15px; }
+
+.modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+.modal-content { background: #fff; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; position: relative; animation: slideDown 0.3s; }
+.modal-lg { max-width: 800px; }
+@keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #aaa; }
+.close-modal:hover { color: #000; }
+
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.form-row { display: flex; gap: 15px; }
+.col-md-6 { flex: 1; }
+
+.badge-danger { background-color: #dc3545; color: white; }
+.badge-warning { background-color: #ffc107; color: white; }
+.badge-info { background-color: #343a40; color: #fff; }
+.badge-primary { background-color: #007bff; color: white; }
+.badge-success { background-color: #28a745; color: white; }
+
+/* ================= 5. TRẠNG THÁI THU NHỎ (MINI SIDEBAR) ================= */
+
+/* Khi body có class 'hide-menu' -> Menu thu lại còn 70px */
+body.hide-menu .sidebar {
+    width: 70px;
+}
+
+/* 1. Xử lý Header: Ẩn chữ, Căn giữa nút */
+body.hide-menu .sidebar-header {
+    justify-content: center; 
+    padding: 0;
+}
+body.hide-menu .sidebar-header h3 {
+    display: none; 
+}
+
+/* 2. Xử lý Menu Item: Ẩn chữ, Căn giữa icon */
+body.hide-menu .menu-item a {
+    justify-content: center;
+    padding: 15px 0;
+    font-size: 0; /* Mẹo ẩn chữ text node */
+}
+body.hide-menu .menu-item i {
+    margin-right: 0; /* Bỏ khoảng cách lề phải của icon */
+    font-size: 20px; /* Giữ kích thước icon */
+}
+
+/* 3. Xử lý nút Đăng xuất */
+body.hide-menu #logout-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    margin: 0 auto;
+    font-size: 0; /* Ẩn chữ */
+}
+/* Hiện lại icon nếu có (hoặc dùng ::before để thêm icon nếu cần) */
+body.hide-menu #logout-btn i {
+    margin: 0;
+    font-size: 16px;
+}

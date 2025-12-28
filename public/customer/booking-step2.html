@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoàn tất đặt phòng - Booking Hotel</title>
+    <link rel="stylesheet" href="style-home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .booking-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .booking-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .booking-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+        }
+
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .step:last-child::after {
+            display: none;
+        }
+
+        .step.completed::after {
+            background: #28a745;
+        }
+
+        .step.active::after {
+            background: #0071c2;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step.active .step-number {
+            background: #0071c2;
+            color: white;
+        }
+
+        .step.completed .step-number {
+            background: #28a745;
+            color: white;
+        }
+
+        .step.completed .step-number::before {
+            content: '✓';
+        }
+
+        .step-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .step.active .step-label,
+        .step.completed .step-label {
+            color: #0071c2;
+            font-weight: 600;
+        }
+
+        .booking-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .confirmation-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .summary-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #003580;
+            margin-bottom: 20px;
+        }
+
+        .payment-notice {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #0071c2;
+        }
+
+        .payment-notice h3 {
+            margin: 0 0 10px 0;
+            color: #0071c2;
+            font-size: 18px;
+        }
+
+        .payment-notice p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .terms-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .terms-checkbox input[type="checkbox"] {
+            width: auto;
+            margin-top: 3px;
+        }
+
+        .terms-checkbox label {
+            font-size: 14px;
+            color: #666;
+            font-weight: normal;
+            line-height: 1.6;
+        }
+
+        .terms-checkbox a {
+            color: #0071c2;
+            text-decoration: underline;
+        }
+
+        .btn-complete {
+            width: 100%;
+            background: #0071c2;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-complete:hover {
+            background: #005999;
+        }
+
+        .btn-complete:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .hotel-info-card {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .hotel-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .hotel-details h3 {
+            margin: 0 0 10px 0;
+            color: #003580;
+            font-size: 18px;
+        }
+
+        .hotel-details p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .booking-details {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .booking-details h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .booking-details-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .booking-details-item label {
+            color: #666;
+        }
+
+        .booking-details-item span {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .price-summary {
+            margin-bottom: 20px;
+        }
+
+        .price-summary h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .price-row.total {
+            font-size: 20px;
+            font-weight: bold;
+            color: #003580;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+            margin-top: 15px;
+        }
+
+        .price-note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .price-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .price-details a {
+            color: #0071c2;
+            text-decoration: underline;
+        }
+
+        .payment-schedule {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .payment-schedule h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .payment-schedule p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .cancellation-info {
+            margin-bottom: 20px;
+        }
+
+        .cancellation-info h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .cancellation-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .promo-code-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .promo-code-section h4 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .promo-input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .promo-input-group button {
+            padding: 10px 20px;
+            background: #0071c2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .promo-input-group button:hover {
+            background: #005999;
+        }
+
+        .guest-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .guest-info h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .guest-info-item {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .guest-info-item label {
+            color: #666;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .guest-info-item span {
+            color: #333;
+            font-weight: 500;
+        }
+
+        @media (max-width: 968px) {
+            .booking-content {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-section {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="index.html" class="logo">Booking Hotel</a>
+            <div class="auth-buttons" id="auth-section"></div>
+        </div>
+    </header>
+
+    <div class="booking-container">
+        <div class="booking-header">
+            <div class="booking-steps">
+                <div class="step completed">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Bạn chọn</div>
+                </div>
+                <div class="step completed">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Chi tiết về bạn</div>
+                </div>
+                <div class="step active">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Hoàn tất đặt phòng</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-content">
+            <!-- Phần xác nhận và hoàn tất -->
+            <div class="confirmation-section">
+                <h2 class="section-title">Hoàn tất đặt phòng</h2>
+
+                <div class="payment-notice">
+                    <h3>Không yêu cầu thông tin thanh toán</h3>
+                    <p>Thanh toán của bạn sẽ do khách sạn xử lý, nên bạn không cần nhập thông tin thanh toán cho đơn đặt này.</p>
+                </div>
+
+                <div class="guest-info">
+                    <h4>Thông tin khách hàng</h4>
+                    <div class="guest-info-item">
+                        <label>Họ tên:</label>
+                        <span id="guest-name"></span>
+                    </div>
+                    <div class="guest-info-item">
+                        <label>Email:</label>
+                        <span id="guest-email"></span>
+                    </div>
+                    <div class="guest-info-item">
+                        <label>Số điện thoại:</label>
+                        <span id="guest-phone"></span>
+                    </div>
+                    <div class="guest-info-item" id="arrival-time-info" style="display: none;">
+                        <label>Thời gian đến:</label>
+                        <span id="guest-arrival-time"></span>
+                    </div>
+                    <div class="guest-info-item" id="special-requests-info" style="display: none;">
+                        <label>Yêu cầu đặc biệt:</label>
+                        <span id="guest-special-requests"></span>
+                    </div>
+                </div>
+
+                <div class="terms-checkbox">
+                    <input type="checkbox" id="terms-agree" required>
+                    <label for="terms-agree">
+                        Tôi đồng ý nhận email marketing từ Booking Hotel về các ưu đãi và khuyến mãi đặc biệt.
+                    </label>
+                </div>
+
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.6;">
+                    Đặt phòng của bạn là đặt phòng trực tiếp với khách sạn và bằng việc hoàn tất đặt phòng này, bạn đồng ý với 
+                    <a href="#" style="color: #0071c2;">điều kiện đặt phòng</a>, 
+                    <a href="#" style="color: #0071c2;">điều khoản chung</a> và 
+                    <a href="#" style="color: #0071c2;">chính sách bảo mật</a>.
+                </p>
+
+                <button type="button" class="btn-complete" id="btn-complete-booking" onclick="completeBooking()">
+                    <i class="fas fa-lock"></i>
+                    Hoàn tất đặt chỗ
+                </button>
+            </div>
+
+            <!-- Tóm tắt đặt phòng -->
+            <div class="summary-section">
+                <div class="hotel-info-card">
+                    <img id="hotel-image" src="" alt="Hotel" class="hotel-image">
+                    <div class="hotel-details">
+                        <h3 id="hotel-name">Đang tải...</h3>
+                        <p id="hotel-address">Đang tải...</p>
+                        <p id="hotel-rating"></p>
+                    </div>
+                </div>
+
+                <div class="booking-details">
+                    <h4>Chi tiết đặt phòng của bạn</h4>
+                    <div class="booking-details-item" id="room-type-item" style="display: none;">
+                        <label>Loại phòng:</label>
+                        <span id="summary-room-type"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Nhận phòng:</label>
+                        <span id="summary-checkin"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Trả phòng:</label>
+                        <span id="summary-checkout"></span>
+                    </div>
+                    <div class="booking-details-item">
+                        <label>Tổng thời gian lưu trú:</label>
+                        <span id="summary-duration"></span>
+                    </div>
+                </div>
+
+                <div class="price-summary">
+                    <h4>Tóm tắt giá</h4>
+                    <div class="price-row">
+                        <span>Giá gốc:</span>
+                        <span id="original-price" style="text-decoration: line-through; color: #999;"></span>
+                    </div>
+                    <div class="price-row" id="discount-row" style="display: none;">
+                        <span>Giảm giá:</span>
+                        <span id="discount-amount" style="color: #28a745;"></span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Tổng cộng:</span>
+                        <span id="total-price"></span>
+                    </div>
+                    <div class="price-note">Đã bao gồm thuế và phí</div>
+                    <div class="price-details">
+                        Bao gồm <span id="tax-amount"></span> phí và thuế (8% Thuế GTGT)
+                        <a href="#" style="margin-left: 5px;">Ấn chi tiết</a>
+                    </div>
+                </div>
+
+                <div class="payment-schedule">
+                    <h4>Lịch thanh toán của bạn</h4>
+                    <p>Không cần thanh toán hôm nay. Bạn sẽ trả khi đến nghỉ.</p>
+                </div>
+
+                <div class="cancellation-info">
+                    <h4>Chi phí hủy là bao nhiêu?</h4>
+                    <p id="cancellation-policy">Hủy miễn phí trước ngày nhận phòng</p>
+                </div>
+
+                <div class="promo-code-section">
+                    <h4>Bạn có mã khuyến mãi không?</h4>
+                    <div class="promo-input-group">
+                        <input type="text" id="promo-code" placeholder="Nhập mã khuyến mại">
+                        <button onclick="applyPromoCode()">Áp dụng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="booking-step2.js"></script>
+</body>
+</html>
+

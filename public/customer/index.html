@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Chủ - Đặt Phòng Khách Sạn</title>
+    <link rel="stylesheet" href="style-home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="navbar">
+            <a href="index.html" class="logo">Booking Hotel</a>
+            <div class="auth-buttons" id="auth-section">
+                </div>
+        </div>
+    </header>
+
+    <div class="hero">
+        <h1>Tìm chỗ nghỉ tiếp theo của bạn</h1>
+        <p>Ưu đãi khách sạn, chỗ nghỉ dạng nhà và nhiều hơn nữa...</p>
+    </div>
+
+    <div class="search-container">
+        <div class="search-bar">
+            
+            <div class="search-item location-wrap">
+                <i class="fas fa-bed"></i> 
+                <input type="text" id="search-location" placeholder="Bạn muốn đến đâu?">
+                <div id="location-dropdown" class="search-floating-menu location-dropdown">
+                    <ul id="city-list"></ul>
+                </div>
+            </div>
+            
+            <div class="search-item date-item">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="date-input-wrapper">
+                    <label for="checkin-date" class="date-label">Nhận phòng</label>
+                    <input type="date" id="checkin-date" required>
+                </div>
+            </div>
+
+            <div class="search-item date-item">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="date-input-wrapper">
+                    <label for="checkout-date" class="date-label">Trả phòng</label>
+                    <input type="date" id="checkout-date" required>
+                </div>
+            </div>
+
+            <div class="search-item guests-wrap" id="guests-selector">
+                <i class="fas fa-users"></i>
+                <div class="guests-input-wrapper" onclick="toggleGuestsDropdown()">
+                    <label class="guests-label">Khách và phòng</label>
+                    <span id="guests-display">2 người lớn - 0 trẻ em - 1 phòng</span>
+                </div>
+                <div id="guests-dropdown" class="guests-dropdown">
+                    <div class="guests-option">
+                        <div class="guests-option-label">
+                            <span>Người lớn</span>
+                        </div>
+                        <div class="guests-counter">
+                            <button type="button" class="counter-btn" onclick="changeGuests('adults', -1)">-</button>
+                            <span id="adults-count" class="counter-value">2</span>
+                            <button type="button" class="counter-btn" onclick="changeGuests('adults', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="guests-option">
+                        <div class="guests-option-label">
+                            <span>Trẻ em</span>
+                        </div>
+                        <div class="guests-counter">
+                            <button type="button" class="counter-btn" onclick="changeGuests('children', -1)">-</button>
+                            <span id="children-count" class="counter-value">0</span>
+                            <button type="button" class="counter-btn" onclick="changeGuests('children', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="guests-option">
+                        <div class="guests-option-label">
+                            <span>Phòng</span>
+                        </div>
+                        <div class="guests-counter">
+                            <button type="button" class="counter-btn" onclick="changeGuests('rooms', -1)">-</button>
+                            <span id="rooms-count" class="counter-value">1</span>
+                            <button type="button" class="counter-btn" onclick="changeGuests('rooms', 1)">+</button>
+                        </div>
+                    </div>
+                    <button type="button" class="guests-done-btn" onclick="closeGuestsDropdown()">Xong</button>
+                </div>
+            </div>
+            
+            <button class="btn-search" onclick="searchRooms()">Tìm kiếm</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 class="section-title">Điểm đến đang thịnh hành</h2>
+        <p class="section-desc">Các lựa chọn phổ biến nhất cho du khách từ Việt Nam</p>
+        
+        <div class="destination-grid">
+            <div class="dest-card dest-large" onclick="goToSearch('TP. Hồ Chí Minh')">
+                <img src="https://images.unsplash.com/photo-1583417319070-4a69db38a482?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="HCM">
+                <div class="dest-overlay">
+                    <h3>TP. Hồ Chí Minh <img src="https://flagcdn.com/w40/vn.png" class="dest-flag" alt="VN"></h3>
+                </div>
+            </div>
+
+            <div class="dest-card dest-large" onclick="goToSearch('Đà Nẵng')">
+                <img src="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Da Nang">
+                <div class="dest-overlay">
+                    <h3>Đà Nẵng <img src="https://flagcdn.com/w40/vn.png" class="dest-flag" alt="VN"></h3>
+                </div>
+            </div>
+
+            <div class="dest-card" onclick="goToSearch('Hà Nội')">
+                <img src="https://datviettour.com.vn/uploads/images/tin-tuc-SEO/mien-bac/Ha-noi/danh-thang/pho-duong-tau-ha-noi-4.jpg" alt="Hanoi">
+                <div class="dest-overlay">
+                    <h3>Hà Nội <img src="https://flagcdn.com/w40/vn.png" class="dest-flag" alt="VN"></h3>
+                </div>
+            </div>
+
+            <div class="dest-card" onclick="goToSearch('Vũng Tàu')">
+                <img src="https://palacelonghairesort.vn/wp-content/uploads/2025/06/di-du-lich-vung-tau-can-bao-nhieu-tien-1.jpg" alt="Vung Tau">
+                <div class="dest-overlay">
+                    <h3>Vũng Tàu <img src="https://flagcdn.com/w40/vn.png" class="dest-flag" alt="VN"></h3>
+                </div>
+            </div>
+
+            <div class="dest-card" onclick="goToSearch('Đà Lạt')">
+                <img src="https://cdn3.ivivu.com/2023/10/du-lich-Da-Lat-ivivu.jpg" alt="Da Lat">
+                <div class="dest-overlay">
+                    <h3>Đà Lạt <img src="https://flagcdn.com/w40/vn.png" class="dest-flag" alt="VN"></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-col">
+            <h3>Booking Hotel</h3>
+            <p>Nền tảng đặt phòng khách sạn hàng đầu, mang đến cho bạn những trải nghiệm nghỉ dưỡng tuyệt vời nhất tại Việt Nam.</p>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-youtube"></i></a>
+            </div>
+        </div>
+
+        <div class="footer-col">
+            <h4>Khám phá</h4>
+            <ul>
+                <li><a href="index.html">Trang chủ</a></li>
+                <li><a href="#">Về chúng tôi</a></li>
+                <li><a href="#">Phòng & Giá</a></li>
+                <li><a href="#">Tin tức du lịch</a></li>
+                <li><a href="#">Tuyển dụng</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-col">
+            <h4>Hỗ trợ khách hàng</h4>
+            <ul>
+                <li><a href="#">Trung tâm trợ giúp</a></li>
+                <li><a href="#">Chính sách bảo mật</a></li>
+                <li><a href="#">Điều khoản sử dụng</a></li>
+                <li><a href="#">Quy chế hoạt động</a></li>
+                <li><a href="#">Liên hệ</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-col">
+            <h4>Liên hệ</h4>
+            <ul class="contact-info">
+                <li><i class="fas fa-map-marker-alt"></i> Số 1 Đại Cồ Việt, Hà Nội</li>
+                <li><i class="fas fa-phone-alt"></i> 1900 123 456</li>
+                <li><i class="fas fa-envelope"></i> hotro@bookinghotel.com</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2025 Booking Hotel. All rights reserved.</p>
+    </div>
+</footer>
+</html>
