@@ -276,6 +276,8 @@ async function deleteCategory(id) {
 }
 
 /* ================= 3. MODULE KHÁCH SẠN ================= */
+let allHotels = []; // Lưu danh sách hotels để filter
+
 async function loadHotels() {
     try {
         const res = await fetchWithAuth("/rooms");
@@ -285,36 +287,9 @@ async function loadHotels() {
             throw new Error(errorData.error || "Lỗi tải dữ liệu");
         }
         
-        const hotels = await res.json();
-        const tbody = document.getElementById("hotel-table-body");
-        tbody.innerHTML = "";
-        
+        allHotels = await res.json();
         loadCategoriesForHotelSelect();
-
-        hotels.forEach(hotel => {
-            const statusText = hotel.Status === 'available' ? 'Hoạt động' : 'Bảo trì';
-            const img = hotel.ImageURL ? `<img src="${hotel.ImageURL}" class="table-img">` : '';
-            
-            // Xử lý chuỗi để tránh lỗi JS
-            const desc = hotel.Description ? hotel.Description.replace(/\n/g, "\\n").replace(/'/g, "\\'") : "";
-            const addr = hotel.Address ? hotel.Address.replace(/'/g, "\\'") : "";
-            const lat = hotel.Latitude || '';
-            const lng = hotel.Longitude || '';
-
-            tbody.innerHTML += `
-                <tr>
-                    <td>${hotel.RoomID}</td>
-                    <td>${img}</td>
-                    <td><b>${hotel.RoomName}</b></td>
-                    <td><small style="color:#666"><i class="fas fa-map-marker-alt"></i> ${hotel.Address || '---'}</small></td>
-                    <td>${hotel.CategoryName || '---'}</td>
-                    <td>${statusText}</td>
-                    <td>
-                        <button onclick="openEditHotel(${hotel.RoomID}, '${hotel.RoomName}', ${hotel.CategoryID || 'null'}, '${hotel.Status}', '${desc}', '${hotel.ImageURL || ''}', '${addr}', '${lat}', '${lng}')" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteHotel(${hotel.RoomID})" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>`;
-        });
+        renderHotels(allHotels);
     } catch (err) { 
         console.error(err);
         const tbody = document.getElementById("hotel-table-body");
@@ -324,13 +299,72 @@ async function loadHotels() {
     }
 }
 
+function renderHotels(hotels) {
+    const tbody = document.getElementById("hotel-table-body");
+        tbody.innerHTML = "";
+        
+    if (hotels.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#999;">Không tìm thấy khách sạn nào</td></tr>`;
+        return;
+    }
+
+    hotels.forEach(hotel => {
+        const statusText = hotel.Status === 'available' ? 'Hoạt động' : 'Bảo trì';
+        const img = hotel.ImageURL ? `<img src="${hotel.ImageURL}" class="table-img">` : '';
+            
+            // Xử lý chuỗi để tránh lỗi JS
+        const desc = hotel.Description ? hotel.Description.replace(/\n/g, "\\n").replace(/'/g, "\\'") : "";
+        const addr = hotel.Address ? hotel.Address.replace(/'/g, "\\'") : "";
+        const lat = hotel.Latitude || '';
+        const lng = hotel.Longitude || '';
+
+            tbody.innerHTML += `
+                <tr>
+                <td>${hotel.RoomID}</td>
+                    <td>${img}</td>
+                <td><b>${hotel.RoomName}</b></td>
+                <td><small style="color:#666"><i class="fas fa-map-marker-alt"></i> ${hotel.Address || '---'}</small></td>
+                <td>${hotel.CategoryName || '---'}</td>
+                    <td>${statusText}</td>
+                    <td>
+                    <button onclick="openEditHotel(${hotel.RoomID}, '${hotel.RoomName}', ${hotel.CategoryID || 'null'}, '${hotel.Status}', '${desc}', '${hotel.ImageURL || ''}', '${addr}', '${lat}', '${lng}')" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteHotel(${hotel.RoomID})" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+}
+
+function filterHotels() {
+    const searchInput = document.getElementById('hotel-search');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        renderHotels(allHotels);
+        return;
+    }
+    
+    const filteredHotels = allHotels.filter(hotel => {
+        const name = (hotel.RoomName || '').toLowerCase();
+        const address = (hotel.Address || '').toLowerCase();
+        const category = (hotel.CategoryName || '').toLowerCase();
+        
+        return name.includes(searchTerm) || 
+               address.includes(searchTerm) || 
+               category.includes(searchTerm);
+    });
+    
+    renderHotels(filteredHotels);
+}
+
 async function loadCategoriesForHotelSelect() {
     const res = await fetchWithAuth("/categories");
     const cats = await res.json();
     const select = document.getElementById("hotel-category");
     if (select) {
-        select.innerHTML = "";
-        cats.forEach(c => select.innerHTML += `<option value="${c.CategoryID}">${c.CategoryName}</option>`);
+    select.innerHTML = "";
+    cats.forEach(c => select.innerHTML += `<option value="${c.CategoryID}">${c.CategoryName}</option>`);
     }
 }
 
@@ -403,8 +437,9 @@ async function loadRoomTypes() {
         
         const hotelFilter = document.getElementById("hotel-filter").value;
         
-        // Load tất cả room types từ admin API
-        const res = await fetchWithAuth("/roomtypes");
+        // Load tất cả room types từ admin API (thêm timestamp để tránh cache)
+        // Lưu ý: API_URL đã có /admin nên chỉ cần /roomtypes
+        const res = await fetchWithAuth(`/roomtypes?t=${new Date().getTime()}`);
         
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
@@ -423,7 +458,7 @@ async function loadRoomTypes() {
         console.error(err);
         const tbody = document.getElementById("roomtype-table-body");
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#999;">Lỗi tải dữ liệu: ${err.message || 'Có thể bảng RoomTypes chưa được tạo.'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#999;">Lỗi tải dữ liệu: ${err.message || 'Có thể bảng RoomTypes chưa được tạo.'}</td></tr>`;
         }
     }
 }
@@ -433,7 +468,7 @@ function renderRoomTypes(roomTypes) {
     tbody.innerHTML = "";
     
     if (!roomTypes || roomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Chưa có loại phòng nào.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có loại phòng nào.</td></tr>';
         return;
     }
     
@@ -453,6 +488,7 @@ function renderRoomTypes(roomTypes) {
 
         // Xử lý area để truyền vào hàm edit
         const areaValue = rt.Area ? rt.Area : '';
+        const availableRooms = rt.AvailableRooms !== undefined && rt.AvailableRooms !== null ? rt.AvailableRooms : 10;
         
         tbody.innerHTML += `
             <tr>
@@ -463,8 +499,9 @@ function renderRoomTypes(roomTypes) {
                 <td>${price} đ</td>
                 <td>${area}</td>
                 <td>${maxGuests} khách</td>
+                <td><b style="color: ${availableRooms > 0 ? '#28a745' : '#dc3545'}">${availableRooms}</b> phòng</td>
                 <td>
-                    <button onclick="openEditRoomType(${rt.RoomTypeID}, ${rt.HotelID}, '${name}', ${rt.Price || 0}, '${areaValue}', ${maxGuests}, '${bedType}', ${rt.BedCount || 1}, '${rt.ImageURL || ''}', '${desc}')" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
+                    <button onclick="openEditRoomType(${rt.RoomTypeID}, ${rt.HotelID}, '${name}', ${rt.Price || 0}, '${areaValue}', ${maxGuests}, '${bedType}', ${rt.BedCount || 1}, '${rt.ImageURL || ''}', '${desc}', ${availableRooms})" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></button>
                     <button onclick="deleteRoomType(${rt.RoomTypeID})" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
@@ -512,7 +549,7 @@ document.getElementById("btn-add-roomtype").onclick = () => {
     loadHotelsForRoomTypeSelect();
 };
 
-function openEditRoomType(id, hotelId, name, price, area, maxGuests, bedType, bedCount, img, desc) {
+function openEditRoomType(id, hotelId, name, price, area, maxGuests, bedType, bedCount, img, desc, availableRooms) {
     document.getElementById("roomtype-id").value = id;
     document.getElementById("roomtype-hotel").value = hotelId || '';
     document.getElementById("roomtype-name").value = name || '';
@@ -523,6 +560,7 @@ function openEditRoomType(id, hotelId, name, price, area, maxGuests, bedType, be
     document.getElementById("roomtype-bedcount").value = bedCount || 1;
     document.getElementById("roomtype-image").value = img || '';
     document.getElementById("roomtype-description").value = desc || '';
+    document.getElementById("roomtype-availablerooms").value = availableRooms !== undefined ? availableRooms : 10;
 
     document.querySelector("#modal-roomtype h3").innerText = "Cập nhật Loại phòng";
     document.getElementById("modal-roomtype").style.display = "flex";
@@ -546,7 +584,8 @@ document.getElementById("roomtype-form").onsubmit = async (e) => {
         bedType: document.getElementById("roomtype-bedtype").value || null,
         bedCount: parseInt(document.getElementById("roomtype-bedcount").value) || 1,
         imageURL: document.getElementById("roomtype-image").value || null,
-        description: document.getElementById("roomtype-description").value || null
+        description: document.getElementById("roomtype-description").value || null,
+        availableRooms: parseInt(document.getElementById("roomtype-availablerooms").value) || 10
     };
     
     // Validate
@@ -574,7 +613,10 @@ document.getElementById("roomtype-form").onsubmit = async (e) => {
         if(res.ok) {
             alert("Thành công!");
             document.getElementById("modal-roomtype").style.display = "none";
-            loadRoomTypes();
+            // Đợi một chút để đảm bảo database đã cập nhật
+            setTimeout(() => {
+                loadRoomTypes();
+            }, 100);
         } else {
             const errorData = await res.json();
             alert("Lỗi: " + (errorData.error || "Không xác định"));
@@ -605,13 +647,31 @@ async function deleteRoomType(id) {
 
 /* ================= 4. MODULE BOOKING (ĐƠN HÀNG) ================= */
 
+let allBookings = []; // Lưu danh sách bookings để filter
+
 // Hàm load danh sách Booking
 async function loadBookings() {
     try {
         const res = await fetchWithAuth("/bookings");
-        const bookings = await res.json();
+        allBookings = await res.json();
+        renderBookings(allBookings);
+    } catch (err) {
+        console.error(err);
+        const tbody = document.getElementById("booking-table-body");
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#999;">Lỗi tải dữ liệu: ${err.message || 'Không xác định'}</td></tr>`;
+        }
+    }
+}
+
+function renderBookings(bookings) {
         const tbody = document.getElementById("booking-table-body");
         tbody.innerHTML = "";
+
+    if (bookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#999;">Không tìm thấy hóa đơn nào</td></tr>`;
+        return;
+    }
 
         bookings.forEach(bk => {
             // Tính số đêm để tính tổng tiền
@@ -709,7 +769,36 @@ async function loadBookings() {
                 </tr>
             `;
         });
-    } catch (err) { console.error(err); }
+}
+
+function filterBookings() {
+    const searchInput = document.getElementById('booking-search');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        renderBookings(allBookings);
+        return;
+    }
+    
+    const filteredBookings = allBookings.filter(bk => {
+        const bookingId = (bk.BookingID || '').toString();
+        const guestName = ((bk.GuestName || bk.Username) || '').toLowerCase();
+        const guestEmail = ((bk.GuestEmail || bk.Email) || '').toLowerCase();
+        const roomName = (bk.RoomName || '').toLowerCase();
+        const guestPhone = (bk.GuestPhone || '').toLowerCase();
+        const status = (bk.Status || '').toLowerCase();
+        
+        return bookingId.includes(searchTerm) ||
+               guestName.includes(searchTerm) ||
+               guestEmail.includes(searchTerm) ||
+               roomName.includes(searchTerm) ||
+               guestPhone.includes(searchTerm) ||
+               status.includes(searchTerm);
+    });
+    
+    renderBookings(filteredBookings);
 }
 
 // Hàm cập nhật trạng thái (Duyệt/Hủy)
@@ -828,6 +917,13 @@ async function viewBookingDetail(bookingId) {
                 <div style="background:#fff3cd; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #ffc107;">
                     <h4 style="margin-top:0; color:#856404;">Yêu cầu đặc biệt</h4>
                     <p style="color:#856404;">${booking.SpecialRequests}</p>
+                </div>
+                ` : ''}
+                
+                ${booking.Status === 'Cancelled' && booking.CancelReason ? `
+                <div style="background:#f8d7da; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #dc3545;">
+                    <h4 style="margin-top:0; color:#721c24;"><i class="fas fa-ban"></i> Lý do hủy đơn</h4>
+                    <p style="color:#721c24;">${booking.CancelReason}</p>
                 </div>
                 ` : ''}
                 

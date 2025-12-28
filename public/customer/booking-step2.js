@@ -245,6 +245,7 @@ function completeBooking() {
         },
         body: JSON.stringify({
             roomId: bookingData.roomId,
+            roomTypeId: bookingData.roomTypeId || null,
             checkIn: bookingData.checkIn,
             checkOut: bookingData.checkOut,
             adults: bookingData.adults,
@@ -282,17 +283,4 @@ function completeBooking() {
     });
 }
 
-// ================= PROMO CODE =================
-
-function applyPromoCode() {
-    const promoCode = document.getElementById('promo-code').value.trim();
-    
-    if (!promoCode) {
-        alert('Vui lòng nhập mã khuyến mãi!');
-        return;
-    }
-    
-    // TODO: Implement promo code logic
-    alert('Mã khuyến mãi đã được áp dụng!');
-}
 

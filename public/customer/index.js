@@ -990,20 +990,17 @@ function handleSortChange() {
     let sortedRooms = [...allRooms];
     
     switch(sortValue) {
-        case 'price-asc':
-            sortedRooms.sort((a, b) => parseFloat(a.Price) - parseFloat(b.Price));
-            break;
-        case 'price-desc':
-            sortedRooms.sort((a, b) => parseFloat(b.Price) - parseFloat(a.Price));
-            break;
         case 'rating-desc':
             sortedRooms.sort((a, b) => parseFloat(b.AvgRating || 0) - parseFloat(a.AvgRating || 0));
+            break;
+        case 'rating-asc':
+            sortedRooms.sort((a, b) => parseFloat(a.AvgRating || 0) - parseFloat(b.AvgRating || 0));
             break;
         case 'name-asc':
             sortedRooms.sort((a, b) => a.RoomName.localeCompare(b.RoomName));
             break;
         default:
-            // Giữ nguyên thứ tự
+            // Giữ nguyên thứ tự (Lựa chọn hàng đầu của chúng tôi)
             break;
     }
     

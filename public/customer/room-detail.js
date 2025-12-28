@@ -277,8 +277,43 @@ function initDefaultDates() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    document.getElementById('checkin-detail').value = formatDate(today);
-    document.getElementById('checkout-detail').value = formatDate(tomorrow);
+    const checkInInput = document.getElementById('checkin-detail');
+    const checkOutInput = document.getElementById('checkout-detail');
+    
+    checkInInput.value = formatDate(today);
+    checkOutInput.value = formatDate(tomorrow);
+    
+    // Thêm event listener để tự động reload khi thay đổi ngày
+    checkInInput.addEventListener('change', () => {
+        // Cập nhật min date của checkout
+        const selectedCheckIn = new Date(checkInInput.value);
+        const minCheckOut = new Date(selectedCheckIn);
+        minCheckOut.setDate(minCheckOut.getDate() + 1);
+        checkOutInput.min = formatDate(minCheckOut);
+        
+        // Nếu checkout < checkin + 1, tự động cập nhật checkout
+        if (checkOutInput.value && new Date(checkOutInput.value) <= selectedCheckIn) {
+            checkOutInput.value = formatDate(minCheckOut);
+        }
+        
+        // Tự động reload danh sách phòng
+        if (checkInInput.value && checkOutInput.value) {
+            console.log('Check-in changed, reloading room types...');
+            loadRoomTypes();
+        }
+    });
+    
+    checkOutInput.addEventListener('change', () => {
+        // Tự động reload danh sách phòng
+        if (checkInInput.value && checkOutInput.value) {
+            console.log('Check-out changed, reloading room types...');
+            loadRoomTypes();
+        }
+    });
+    
+    // Set min date cho checkout
+    const minCheckOut = new Date(tomorrow);
+    checkOutInput.min = formatDate(minCheckOut);
 }
 
 function formatDate(date) {
@@ -302,19 +337,49 @@ async function loadRoomTypes() {
     const checkIn = document.getElementById('checkin-detail').value;
     const checkOut = document.getElementById('checkout-detail').value;
     
-    if (!checkIn || !checkOut) {
-        alert('Vui lòng chọn ngày nhận và trả phòng!');
-        return;
-    }
+    console.log('loadRoomTypes called with:', { checkIn, checkOut });
     
-    if (new Date(checkIn) >= new Date(checkOut)) {
-        alert('Ngày trả phòng phải sau ngày nhận phòng!');
-        return;
+    // Nếu không có ngày, vẫn load RoomTypes (không filter theo ngày)
+    // Chỉ validate nếu có ngày
+    if (checkIn && checkOut) {
+        if (new Date(checkIn) >= new Date(checkOut)) {
+            alert('Ngày trả phòng phải sau ngày nhận phòng!');
+            return;
+        }
     }
     
     try {
-        // Lấy các loại phòng của hotel này
-        const res = await fetch(`http://localhost:3000/api/hotels/${roomId}/roomtypes`);
+        // Hiển thị loading
+        const roomTypesListEl = document.getElementById('room-types-list');
+        roomTypesListEl.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">Đang tải các loại phòng...</p>';
+        
+        // Lấy thông tin số người và phòng từ URL params (chỉ khi có từ search)
+        const urlParams = new URLSearchParams(window.location.search);
+        const adults = urlParams.get('adults');
+        const children = urlParams.get('children');
+        const rooms = urlParams.get('rooms');
+        
+        // Chỉ gửi filter nếu có thông tin từ URL (tức là từ trang search)
+        // Nếu không có, hiển thị tất cả RoomTypes của hotel này
+        let url = `http://localhost:3000/api/hotels/${roomId}/roomtypes`;
+        const queryParams = [];
+        
+        if (checkIn && checkOut) {
+            queryParams.push(`checkIn=${checkIn}`, `checkOut=${checkOut}`);
+        }
+        
+        // Chỉ thêm filter số người/phòng nếu có từ URL params (từ trang search)
+        if (adults && children && rooms) {
+            queryParams.push(`adults=${adults}`, `children=${children}`, `rooms=${rooms}`);
+        }
+        
+        if (queryParams.length > 0) {
+            url += '?' + queryParams.join('&');
+        }
+        
+        console.log('Fetching URL:', url);
+        
+        const res = await fetch(url);
         
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({ error: 'Lỗi không xác định' }));
@@ -323,11 +388,20 @@ async function loadRoomTypes() {
         
         const roomTypes = await res.json();
         
-        const roomTypesList = document.getElementById('room-types-list');
+        // Debug: Log dữ liệu nhận được
+        console.log('Room types received:', roomTypes);
+        if (checkIn && checkOut && Array.isArray(roomTypes) && roomTypes.length > 0) {
+            console.log('Sample room type data:', {
+                RoomTypeID: roomTypes[0].RoomTypeID,
+                RoomTypeName: roomTypes[0].RoomTypeName,
+                AvailableRooms: roomTypes[0].AvailableRooms,
+                ActualAvailableRooms: roomTypes[0].ActualAvailableRooms
+            });
+        }
         
         // Kiểm tra nếu có hint về migration
         if (roomTypes.error && roomTypes.hint) {
-            roomTypesList.innerHTML = `
+            roomTypesListEl.innerHTML = `
                 <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 20px; border-radius: 8px; text-align: center;">
                     <p style="color: #856404; margin-bottom: 10px;"><strong>⚠️ ${roomTypes.error}</strong></p>
                     <p style="color: #856404; font-size: 14px;">${roomTypes.hint}</p>
@@ -337,7 +411,7 @@ async function loadRoomTypes() {
         }
         
         if (!Array.isArray(roomTypes) || roomTypes.length === 0) {
-            roomTypesList.innerHTML = `
+            roomTypesListEl.innerHTML = `
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center;">
                     <p style="color: #666; margin-bottom: 10px;">Không có loại phòng nào cho khách sạn này.</p>
                     <p style="color: #999; font-size: 14px;">Vui lòng chạy file migration: migrations/07_insert_room_types_sample.sql</p>
@@ -367,8 +441,8 @@ async function loadRoomTypes() {
         renderRoomTypes(roomTypesWithAmenities);
     } catch (error) {
         console.error('Lỗi load loại phòng:', error);
-        const roomTypesList = document.getElementById('room-types-list');
-        roomTypesList.innerHTML = `
+        const roomTypesListEl = document.getElementById('room-types-list');
+        roomTypesListEl.innerHTML = `
             <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 8px; text-align: center;">
                 <p style="color: #721c24; margin-bottom: 10px;"><strong>❌ Lỗi tải các loại phòng</strong></p>
                 <p style="color: #721c24; font-size: 14px;">${error.message}</p>
@@ -386,6 +460,10 @@ function renderRoomTypes(roomTypes) {
         const area = roomType.Area ? `${roomType.Area} m²` : '';
         const bedInfo = roomType.BedType || '';
         const maxGuests = roomType.MaxGuests || 2;
+        // Ưu tiên dùng ActualAvailableRooms nếu có (khi có checkIn/checkOut), nếu không dùng AvailableRooms
+        const availableRooms = roomType.ActualAvailableRooms !== undefined && roomType.ActualAvailableRooms !== null 
+            ? roomType.ActualAvailableRooms 
+            : (roomType.AvailableRooms !== undefined && roomType.AvailableRooms !== null ? roomType.AvailableRooms : 10);
         
         // Nhóm tiện nghi theo category
         const amenitiesByCategory = {};
@@ -399,8 +477,15 @@ function renderRoomTypes(roomTypes) {
             });
         }
         
+        const imageUrl = roomType.ImageURL || 'https://via.placeholder.com/800x400?text=No+Image';
+        
         return `
             <div class="room-type-card">
+                ${imageUrl ? `
+                    <div class="room-type-image">
+                        <img src="${imageUrl}" alt="${roomType.RoomTypeName}" onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
+                    </div>
+                ` : ''}
                 <div class="room-type-header">
                     <div class="room-type-info">
                         <h4>${roomType.RoomTypeName}</h4>
@@ -409,6 +494,9 @@ function renderRoomTypes(roomTypes) {
                             ${bedInfo ? `<span><i class="fa fa-bed"></i> ${bedInfo}</span>` : ''}
                             <span><i class="fa fa-users"></i> Tối đa ${maxGuests} khách</span>
                             ${roomType.AmenityCount ? `<span><i class="fa fa-check-circle"></i> ${roomType.AmenityCount} tiện nghi</span>` : ''}
+                            <span style="color: ${availableRooms > 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                                <i class="fa fa-door-open"></i> Còn ${availableRooms} phòng
+                            </span>
                         </div>
                     </div>
                     <div class="room-type-price">
@@ -441,11 +529,11 @@ function renderRoomTypes(roomTypes) {
                     <div class="room-type-quantity">
                         <label>Số lượng:</label>
                         <select id="quantity-${roomType.RoomTypeID}">
-                            ${Array.from({length: 5}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+                            ${Array.from({length: Math.min(availableRooms, 5)}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
                         </select>
                     </div>
-                    <button class="btn-book-room-type" onclick="bookRoomType(${roomType.RoomTypeID}, '${roomType.RoomTypeName.replace(/'/g, "\\'")}')">
-                        Đặt ngay
+                    <button class="btn-book-room-type" onclick="bookRoomType(${roomType.RoomTypeID}, '${roomType.RoomTypeName.replace(/'/g, "\\'")}')" ${availableRooms === 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                        ${availableRooms === 0 ? 'Hết phòng' : 'Đặt ngay'}
                     </button>
                 </div>
             </div>

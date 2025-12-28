@@ -46,6 +46,12 @@
         }
         .btn-review:hover { background-color: #00224f; }
 
+        .btn-cancel {
+            background-color: #dc3545; color: white; border: none; padding: 8px 15px;
+            border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 10px; transition: 0.3s;
+        }
+        .btn-cancel:hover { background-color: #c82333; }
+
         /* MODAL */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -112,6 +118,23 @@
         </div>
     </div>
 
+    <div id="cancelModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>Xác nhận hủy đơn</h3>
+            <p id="cancelBookingInfo" style="color:#666; margin-bottom:20px;"></p>
+            <p style="color:#dc3545; font-weight:bold; margin-bottom:20px;">
+                <i class="fas fa-exclamation-triangle"></i> Bạn có chắc chắn muốn hủy đơn đặt phòng này?
+            </p>
+            <input type="hidden" id="cancelBookingId">
+            <div class="form-group">
+                <label>Lý do hủy đơn (tùy chọn):</label>
+                <textarea id="cancelReason" rows="3" placeholder="Ví dụ: Thay đổi kế hoạch, Không thể đi được, Đã tìm được chỗ khác..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;"></textarea>
+            </div>
+            <button class="btn-submit" onclick="confirmCancelBooking()" style="background:#dc3545;">Xác nhận hủy</button>
+            <button class="btn-submit btn-close" onclick="closeCancelModal()">Đóng</button>
+        </div>
+    </div>
+
     <script>
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/public/auth/login.html';
@@ -120,27 +143,79 @@
 
         // 1. TẢI DANH SÁCH LỊCH SỬ
         async function loadHistory() {
+            const container = document.getElementById('history-list');
+            
+            // Kiểm tra token
+            if (!token) {
+                container.innerHTML = '<p style="color:#dc3545;">Lỗi: Bạn chưa đăng nhập!</p>';
+                setTimeout(() => {
+                    window.location.href = '/public/auth/login.html';
+                }, 2000);
+                return;
+            }
+            
             try {
+                console.log('Đang tải lịch sử đặt phòng...');
                 const res = await fetch('http://localhost:3000/api/bookings/my-bookings', {
-                    headers: { 'Authorization': token }
+                    headers: { 
+                        'Authorization': token,
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                console.log('Response status:', res.status);
+                
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({ error: 'Lỗi không xác định' }));
+                    console.error('Lỗi API:', errorData);
+                    container.innerHTML = `<p style="color:#dc3545;">Lỗi: ${errorData.error || 'Không thể tải lịch sử đặt phòng'}</p>`;
+                    
+                    // Nếu lỗi authentication, chuyển về login
+                    if (res.status === 401 || res.status === 403) {
+                        setTimeout(() => {
+                            window.location.href = '/public/auth/login.html';
+                        }, 2000);
+                    }
+                    return;
+                }
+                
                 const bookings = await res.json();
-                const container = document.getElementById('history-list');
+                console.log('Bookings received:', bookings);
+                
+                if (!Array.isArray(bookings)) {
+                    console.error('Dữ liệu không phải array:', bookings);
+                    container.innerHTML = '<p style="color:#dc3545;">Lỗi: Dữ liệu không hợp lệ</p>';
+                    return;
+                }
 
                 if (bookings.length === 0) {
                     container.innerHTML = '<p>Bạn chưa đặt phòng nào.</p>';
                     return;
                 }
 
-                container.innerHTML = bookings.map(bk => {
-                    // Tính số đêm
-                    const checkInDate = new Date(bk.CheckInDate);
-                    const checkOutDate = new Date(bk.CheckOutDate);
-                    const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+                try {
+                    container.innerHTML = bookings.map(bk => {
+                        // Kiểm tra dữ liệu cần thiết
+                        if (!bk.CheckInDate || !bk.CheckOutDate) {
+                            console.warn('Booking missing dates:', bk);
+                            return '';
+                        }
+                        
+                        // Tính số đêm
+                        const checkInDate = new Date(bk.CheckInDate);
+                        const checkOutDate = new Date(bk.CheckOutDate);
+                        
+                        if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+                            console.warn('Invalid dates for booking:', bk.BookingID);
+                            return '';
+                        }
+                        
+                        const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
                     
                     // Tính giá tổng (giá mỗi đêm * số đêm * số phòng)
+                    // Ưu tiên sử dụng giá từ RoomType nếu có, nếu không thì dùng giá từ Room
                     const rooms = bk.Rooms || 1;
-                    const pricePerNight = parseFloat(bk.Price) || 0;
+                    const pricePerNight = bk.RoomTypePrice ? parseFloat(bk.RoomTypePrice) : (parseFloat(bk.Price) || 0);
                     const basePrice = pricePerNight * nights * rooms;
                     const tax = basePrice * 0.08; // 8% VAT
                     const totalPrice = basePrice + tax;
@@ -178,8 +253,17 @@
                         actionBtn = `<span style="font-size:13px; color:#28a745; font-style:italic"><i class="fas fa-key"></i> Đang ở...</span>`;
                     } else if (bk.Status === 'Pending') {
                         actionBtn = `<span style="font-size:13px; color:#856404; font-style:italic"><i class="fas fa-clock"></i> Đang chờ xác nhận</span>`;
+                        // Luôn hiển thị nút hủy cho Pending, backend sẽ validate
+                        actionBtn += `<br><button class="btn-cancel" onclick="openCancelModal(${bk.BookingID}, '${bk.RoomName.replace(/'/g, "\\'")}', '${checkIn.replace(/'/g, "\\'")}')"><i class="fas fa-times-circle"></i> Hủy đơn</button>`;
                     } else if (bk.Status === 'Confirmed') {
                         actionBtn = `<span style="font-size:13px; color:#155724; font-style:italic"><i class="fas fa-check"></i> Đã xác nhận</span>`;
+                        // Luôn hiển thị nút hủy cho Confirmed, backend sẽ validate
+                        actionBtn += `<br><button class="btn-cancel" onclick="openCancelModal(${bk.BookingID}, '${bk.RoomName.replace(/'/g, "\\'")}', '${checkIn.replace(/'/g, "\\'")}')"><i class="fas fa-times-circle"></i> Hủy đơn</button>`;
+                    } else if (bk.Status === 'Cancelled') {
+                        actionBtn = `<span style="font-size:13px; color:#721c24; font-style:italic"><i class="fas fa-ban"></i> Đã hủy</span>`;
+                        if (bk.CancelReason) {
+                            actionBtn += `<br><small style="color:#999; font-size:11px; display:block; margin-top:5px;"><i class="fas fa-comment"></i> Lý do: ${bk.CancelReason}</small>`;
+                        }
                     }
 
                     let statusLabel = bk.Status;
@@ -189,11 +273,21 @@
                     if(bk.Status === 'CheckedOut') statusLabel = 'Hoàn tất';
                     if(bk.Status === 'Cancelled') statusLabel = 'Đã hủy';
 
+                    // Sử dụng giá từ RoomType nếu có, nếu không thì dùng giá từ Room
+                    const actualPrice = bk.RoomTypePrice ? parseFloat(bk.RoomTypePrice) : pricePerNight;
+                    const actualBasePrice = actualPrice * nights * rooms;
+                    const actualTax = actualBasePrice * 0.08;
+                    const actualTotalPrice = actualBasePrice + actualTax;
+                    const actualPriceFormatted = new Intl.NumberFormat('vi-VN').format(Math.round(actualTotalPrice)) + ' VNĐ';
+                    
                     return `
                         <div class="history-item">
                             <img src="${bk.ImageURL || 'https://via.placeholder.com/150'}" class="history-img" alt="${bk.RoomName}">
                             <div class="history-info">
                                 <h3 style="margin:0 0 8px 0; color:#003580; font-size:18px">${bk.RoomName}</h3>
+                                ${bk.RoomTypeName ? `<p style="margin:0 0 8px 0; color:#0071c2; font-size:15px; font-weight:500;">
+                                    <i class="fas fa-bed" style="color:#0071c2; margin-right:6px;"></i>${bk.RoomTypeName}
+                                </p>` : ''}
                                 <p style="margin:0 0 8px 0; color:#666; font-size:13px">
                                     <i class="fas fa-hashtag" style="color:#999;"></i> Mã đơn: <strong>#${bk.BookingID}</strong>
                                     <span style="margin-left:15px; color:#999;">Đặt ngày: ${bookingDate}</span>
@@ -222,16 +316,21 @@
                                 <div style="margin-top:10px;">${actionBtn}</div>
                             </div>
                             <div style="text-align:right; min-width:150px;">
-                                <div style="font-weight:bold; color:#003580; font-size:20px; margin-bottom:5px;">${priceFormatted}</div>
+                                <div style="font-weight:bold; color:#003580; font-size:20px; margin-bottom:5px;">${actualPriceFormatted}</div>
                                 <div style="font-size:12px; color:#666;">Tổng cộng</div>
                                 <div style="font-size:11px; color:#999; margin-top:3px;">Đã bao gồm thuế</div>
                             </div>
                         </div>
                     `;
-                }).join('');
+                    }).filter(html => html !== '').join(''); // Lọc bỏ các item rỗng
+                } catch (renderErr) {
+                    console.error('Lỗi render HTML:', renderErr);
+                    container.innerHTML = `<p style="color:#dc3545;">Lỗi hiển thị dữ liệu: ${renderErr.message || 'Lỗi không xác định'}</p>`;
+                }
             } catch (err) {
-                console.error(err);
-                document.getElementById('history-list').innerHTML = 'Lỗi tải lịch sử.';
+                console.error('Lỗi loadHistory:', err);
+                const container = document.getElementById('history-list');
+                container.innerHTML = `<p style="color:#dc3545;">Lỗi tải lịch sử: ${err.message || 'Lỗi không xác định'}</p>`;
             }
         }
 
@@ -280,6 +379,63 @@
                     alert("❌ " + (data.error || "Có lỗi xảy ra"));
                 }
             } catch (e) { console.error(e); alert("Lỗi kết nối server!"); }
+        }
+
+        // 4. MODAL HỦY ĐƠN
+        const cancelModal = document.getElementById('cancelModal');
+
+        function openCancelModal(bookingId, roomName, checkInDate) {
+            document.getElementById('cancelBookingId').value = bookingId;
+            document.getElementById('cancelBookingInfo').innerHTML = `
+                <strong>${roomName}</strong><br>
+                <small>Ngày nhận phòng: ${checkInDate}</small>
+            `;
+            cancelModal.style.display = 'flex';
+        }
+
+        function closeCancelModal() {
+            cancelModal.style.display = 'none';
+            document.getElementById('cancelReason').value = ''; // Reset lý do hủy
+        }
+
+        async function confirmCancelBooking() {
+            const bookingId = document.getElementById('cancelBookingId').value;
+            const cancelReason = document.getElementById('cancelReason').value.trim();
+            
+            if (!bookingId) {
+                alert("Lỗi: Không tìm thấy mã đơn!");
+                return;
+            }
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/bookings/${bookingId}/cancel`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': token 
+                    },
+                    body: JSON.stringify({
+                        cancelReason: cancelReason || null
+                    })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert("✅ " + data.message);
+                    closeCancelModal();
+                    loadHistory(); // Reload danh sách
+                } else {
+                    alert("❌ " + (data.error || "Có lỗi xảy ra"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Lỗi kết nối server!");
+            }
+        }
+
+        window.onclick = function(e) {
+            if (e.target == modal) closeModal();
+            if (e.target == cancelModal) closeCancelModal();
         }
 
         function logout() { localStorage.clear(); window.location.href = 'index.html'; }

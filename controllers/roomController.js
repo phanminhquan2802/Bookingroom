@@ -25,11 +25,10 @@ exports.searchRooms = (req, res) => {
         return res.status(400).json({ error: "Ngày check-out phải sau ngày check-in!" });
     }
 
-    // Logic overlap chính xác hơn:
-    // Phòng bị chiếm nếu:
-    // - CheckInDate của booking < checkOutDate của tìm kiếm VÀ
-    // - CheckOutDate của booking > checkInDate của tìm kiếm
-    // Tính cả Pending, Confirmed, CheckedIn (không tính Cancelled, CheckedOut)
+    // Chỉ hiển thị hotels có room types phù hợp với yêu cầu
+    // Filter dựa trên: có ít nhất 1 RoomType thỏa mãn:
+    // - AvailableRooms >= roomsNum (hoặc ActualAvailableRooms >= roomsNum nếu có checkIn/checkOut)
+    // - (MaxGuests * roomsNum) >= totalGuests
     let sql = `
         SELECT R.*, C.CategoryName,
                COUNT(DISTINCT Rv.ReviewID) as ReviewCount, 
@@ -39,15 +38,8 @@ exports.searchRooms = (req, res) => {
         LEFT JOIN Reviews Rv ON R.RoomID = Rv.RoomID
         WHERE R.Status = 'available'
         AND R.IsDeleted = 0
-        AND R.RoomID NOT IN (
-            SELECT DISTINCT B.RoomID 
-            FROM Bookings B
-            WHERE B.Status IN ('Pending', 'Confirmed', 'CheckedIn')
-            AND B.CheckInDate < ?
-            AND B.CheckOutDate > ?
-        )
     `;
-    const params = [checkOutDate, checkInDate];
+    const params = [];
     
     if (location) { 
         sql += " AND R.Address LIKE ?"; 
@@ -58,9 +50,48 @@ exports.searchRooms = (req, res) => {
         params.push(categoryId);
     }
     
-    // Note: Có thể thêm filter theo số người/phòng nếu cần
-    // Hiện tại chỉ tìm phòng trống, không filter theo capacity
-    // Có thể thêm cột MaxCapacity vào bảng Rooms nếu cần
+    // Thêm điều kiện: hotel phải có ít nhất 1 RoomType phù hợp
+    if (roomsNum > 0 && (adultsNum > 0 || childrenNum > 0)) {
+        const totalGuests = adultsNum + childrenNum;
+        
+        if (checkInDate && checkOutDate) {
+            // Có checkIn/checkOut: kiểm tra ActualAvailableRooms
+            sql += ` AND EXISTS (
+                SELECT 1 FROM RoomTypes RT
+                WHERE RT.HotelID = R.RoomID
+                AND RT.IsDeleted = 0
+                AND (IFNULL(RT.MaxGuests, 2) * ?) >= ?
+                AND (
+                    (IFNULL(RT.AvailableRooms, 10) + COALESCE(
+                        (SELECT SUM(B.Rooms) 
+                         FROM Bookings B 
+                         WHERE B.RoomTypeID = RT.RoomTypeID 
+                         AND B.Status IN ('Pending', 'Confirmed', 'CheckedIn')
+                        ), 0
+                    )) - COALESCE(
+                        (SELECT SUM(B.Rooms) 
+                         FROM Bookings B 
+                         WHERE B.RoomTypeID = RT.RoomTypeID 
+                         AND B.Status IN ('Pending', 'Confirmed', 'CheckedIn')
+                         AND B.CheckInDate < ? 
+                         AND B.CheckOutDate > ?
+                        ), 0
+                    )
+                ) >= ?
+            )`;
+            params.push(roomsNum, totalGuests, checkOutDate, checkInDate, roomsNum);
+        } else {
+            // Không có checkIn/checkOut: chỉ kiểm tra AvailableRooms
+            sql += ` AND EXISTS (
+                SELECT 1 FROM RoomTypes RT
+                WHERE RT.HotelID = R.RoomID
+                AND RT.IsDeleted = 0
+                AND IFNULL(RT.AvailableRooms, 10) >= ?
+                AND (IFNULL(RT.MaxGuests, 2) * ?) >= ?
+            )`;
+            params.push(roomsNum, roomsNum, totalGuests);
+        }
+    }
     
     sql += " GROUP BY R.RoomID";
 
@@ -121,6 +152,7 @@ exports.getAvailableRooms = (req, res) => {
         return res.status(400).json({ error: "Ngày check-out phải sau ngày check-in!" });
     }
     
+    // Luôn hiển thị hotel (không filter dựa trên booking)
     let sql = `
         SELECT R.*, C.CategoryName,
                COUNT(DISTINCT Rv.ReviewID) as ReviewCount, 
@@ -130,16 +162,9 @@ exports.getAvailableRooms = (req, res) => {
         LEFT JOIN Reviews Rv ON R.RoomID = Rv.RoomID
         WHERE R.Status = 'available'
         AND R.IsDeleted = 0
-        AND R.RoomID NOT IN (
-            SELECT DISTINCT B.RoomID 
-            FROM Bookings B
-            WHERE B.Status IN ('Pending', 'Confirmed', 'CheckedIn')
-            AND B.CheckInDate < ?
-            AND B.CheckOutDate > ?
-        )
     `;
     
-    const params = [checkOut, checkIn];
+    const params = [];
     
     if (roomId) {
         sql += " AND R.RoomID = ?";

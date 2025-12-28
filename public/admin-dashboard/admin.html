@@ -70,6 +70,9 @@
 
             <section id="section-hotels" class="content-section">
                 <div class="section-actions">
+                    <input type="text" id="hotel-search" placeholder="Tìm kiếm khách sạn (tên, địa chỉ)..." 
+                           style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; min-width: 300px;"
+                           onkeyup="filterHotels()">
                     <button class="btn btn-primary" id="btn-add-hotel">+ Thêm Khách sạn mới</button>
                 </div>
                 <div class="table-responsive">
@@ -108,6 +111,7 @@
                                 <th>Giá / Đêm</th>
                                 <th>Diện tích</th>
                                 <th>Số khách</th>
+                                <th>Số lượng phòng</th>
                                 <th>Hành động</th>
                             </tr>
                         </thead>
@@ -135,6 +139,11 @@
                 </div>
             </section>
             <section id="section-bookings" class="content-section">
+                <div class="section-actions">
+                    <input type="text" id="booking-search" placeholder="Tìm kiếm (mã đơn, khách hàng, phòng, email)..." 
+                           style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 300px;"
+                           onkeyup="filterBookings()">
+                </div>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
@@ -279,6 +288,14 @@
                     <div class="form-group col-md-4">
                         <label>Số khách tối đa:</label>
                         <input type="number" id="roomtype-maxguests" min="1" max="10" value="2">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Số lượng phòng hiện có:</label>
+                        <input type="number" id="roomtype-availablerooms" min="0" value="10" required>
+                        <small style="color: #666;">Số lượng phòng còn trống của loại phòng này</small>
                     </div>
                 </div>
                  
