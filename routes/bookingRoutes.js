@@ -9,13 +9,16 @@ router.post('/bookings', verifyToken, bookingController.createBooking);
 // 2. Khách xem lịch sử
 router.get('/bookings/my-bookings', verifyToken, bookingController.getMyBookings);
 
-// 3. Khách hủy đơn của chính họ
+// 3. Khách xác nhận đã chuyển khoản đặt cọc
+router.post('/bookings/:id/confirm-deposit', verifyToken, bookingController.confirmDeposit);
+
+// 4. Khách hủy đơn của chính họ
 router.put('/bookings/:id/cancel', verifyToken, bookingController.cancelBooking);
 
-// 4. Admin lấy danh sách
+// 5. Admin lấy danh sách
 router.get('/admin/bookings', verifyAdmin, bookingController.getAllBookings);
 
-// 5. Admin duyệt/hủy đơn
+// 6. Admin duyệt/hủy đơn
 router.put('/admin/bookings/:id', verifyAdmin, bookingController.updateBookingStatus);
 
 module.exports = router;

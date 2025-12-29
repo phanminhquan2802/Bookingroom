@@ -322,26 +322,6 @@
             cursor: not-allowed;
         }
 
-        .tip-box {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            border-left: 4px solid #0071c2;
-        }
-
-        .tip-box h4 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-            color: #0071c2;
-        }
-
-        .tip-box p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #666;
-        }
-
         .special-requests {
             margin-top: 20px;
         }
@@ -349,10 +329,6 @@
         .special-requests textarea {
             min-height: 100px;
             resize: vertical;
-        }
-
-        .arrival-time {
-            margin-top: 20px;
         }
 
         @media (max-width: 968px) {
@@ -436,41 +412,10 @@
                         </div>
                     </div>
 
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="business-travel" name="businessTravel">
-                        <label for="business-travel">Tôi đang đi công tác</label>
-                    </div>
-
-                    <div class="tip-box">
-                        <h4><i class="fas fa-info-circle"></i> Mách nhỏ</h4>
-                        <p><strong>Nhận phòng:</strong> <span id="tip-checkin-time"></span></p>
-                        <p><strong>Trả phòng:</strong> <span id="tip-checkout-time"></span></p>
-                        <p><strong>Thanh toán:</strong> Bạn sẽ thanh toán khi đến nơi</p>
-                    </div>
-
                     <div class="special-requests">
                         <div class="form-group">
                             <label for="special-requests">Các Yêu Cầu Đặc Biệt</label>
                             <textarea id="special-requests" name="specialRequests" placeholder="Vui lòng cho chúng tôi biết nếu bạn có yêu cầu đặc biệt nào..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="arrival-time">
-                        <div class="form-group">
-                            <label for="arrival-time">Thời gian đến của bạn</label>
-                            <select id="arrival-time" name="arrivalTime">
-                                <option value="">Chọn thời gian</option>
-                                <option value="14:00">14:00</option>
-                                <option value="15:00">15:00</option>
-                                <option value="16:00">16:00</option>
-                                <option value="17:00">17:00</option>
-                                <option value="18:00">18:00</option>
-                                <option value="19:00">19:00</option>
-                                <option value="20:00">20:00</option>
-                                <option value="21:00">21:00</option>
-                                <option value="22:00">22:00</option>
-                                <option value="23:00">23:00</option>
-                            </select>
                         </div>
                     </div>
 

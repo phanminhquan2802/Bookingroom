@@ -77,6 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("section-title").innerText = item.querySelector("a").innerText.trim();
             if (targetId === 'section-accounts') loadAccounts();
             if (targetId === 'section-hotels') loadHotels();
+            if (targetId === 'section-staff') loadStaff();
             if (targetId === 'section-rooms') loadRoomTypes();
             if (targetId === 'section-categories') loadCategories();
             if (targetId === 'section-bookings') loadBookings();
@@ -98,11 +99,19 @@ async function loadAccounts() {
         const tbody = document.getElementById("account-table-body");
         tbody.innerHTML = "";
 
-        users.forEach(user => {
-            const roleName = user.RoleID === 1 ? 'Admin' : 'Khách';
+        users.forEach((user, index) => {
+            // Hiển thị ID theo thứ tự (1, 2, 3, 4...)
+            const displayId = index + 1;
+            
+            // Xác định tên role
+            let roleName = 'Khách';
+            if (user.RoleID === 1) roleName = 'Admin';
+            else if (user.RoleID === 3) roleName = 'Nhân viên';
+            
             const date = new Date(user.CreatedAt).toLocaleDateString('vi-VN');
             const isLocked = user.IsLocked === 1;
             const isAdmin = user.RoleID === 1;
+            const isStaff = user.RoleID === 3;
             
             // Badge trạng thái
             let statusBadge = '';
@@ -112,7 +121,7 @@ async function loadAccounts() {
                 statusBadge = '<span class="badge badge-success" style="background:#28a745; color:white; padding:3px 8px; border-radius:3px; font-size:11px;"><i class="fas fa-check-circle"></i> Hoạt động</span>';
             }
             
-            // Nút xóa/khóa - Ẩn cho admin, hiển thị cho khách hàng
+            // Nút xóa/khóa - Ẩn cho admin, hiển thị cho khách hàng và nhân viên
             let deleteButton = '';
             if (!isAdmin) {
                 const buttonText = isLocked ? 'Mở khóa' : 'Khóa';
@@ -123,7 +132,7 @@ async function loadAccounts() {
             
             tbody.innerHTML += `
                 <tr>
-                    <td>${user.AccountID}</td>
+                    <td>${displayId}</td>
                     <td>${user.Username}</td>
                     <td>${user.Email}</td>
                     <td>${roleName}</td>
@@ -216,12 +225,13 @@ async function loadCategories() {
         const cats = await res.json();
         const tbody = document.getElementById("category-table-body");
         tbody.innerHTML = "";
-        cats.forEach(cat => {
+        cats.forEach((cat, index) => {
+            const displayId = index + 1; // ID hiển thị theo thứ tự
             // Chú ý: Dùng dấu nháy đơn trong chuỗi tham số để tránh lỗi
             const desc = cat.Description ? cat.Description.replace(/'/g, "\\'") : ""; 
             tbody.innerHTML += `
                 <tr>
-                    <td>${cat.CategoryID}</td>
+                    <td>${displayId}</td>
                     <td>${cat.CategoryName}</td>
                     <td>${cat.Description || ''}</td>
                     <td>
@@ -308,7 +318,8 @@ function renderHotels(hotels) {
         return;
     }
 
-    hotels.forEach(hotel => {
+    hotels.forEach((hotel, index) => {
+        const displayId = index + 1; // ID hiển thị theo thứ tự
         const statusText = hotel.Status === 'available' ? 'Hoạt động' : 'Bảo trì';
         const img = hotel.ImageURL ? `<img src="${hotel.ImageURL}" class="table-img">` : '';
             
@@ -320,7 +331,7 @@ function renderHotels(hotels) {
 
             tbody.innerHTML += `
                 <tr>
-                <td>${hotel.RoomID}</td>
+                <td>${displayId}</td>
                     <td>${img}</td>
                 <td><b>${hotel.RoomName}</b></td>
                 <td><small style="color:#666"><i class="fas fa-map-marker-alt"></i> ${hotel.Address || '---'}</small></td>
@@ -474,7 +485,8 @@ function renderRoomTypes(roomTypes) {
     
     loadHotelsForRoomTypeSelect();
 
-    roomTypes.forEach(rt => {
+    roomTypes.forEach((rt, index) => {
+        const displayId = index + 1; // ID hiển thị theo thứ tự
         const price = new Intl.NumberFormat('vi-VN').format(rt.Price || 0);
         const img = rt.ImageURL ? `<img src="${rt.ImageURL}" class="table-img">` : '';
         const area = rt.Area ? `${rt.Area} m²` : '---';
@@ -492,7 +504,7 @@ function renderRoomTypes(roomTypes) {
         
         tbody.innerHTML += `
             <tr>
-                <td>${rt.RoomTypeID}</td>
+                <td>${displayId}</td>
                 <td>${img}</td>
                 <td><b>${rt.RoomTypeName}</b></td>
                 <td><small>${rt.HotelName || '---'}</small></td>
@@ -680,8 +692,10 @@ function renderBookings(bookings) {
             const nights = Math.max(1, Math.ceil((outDate - inDate) / (1000 * 60 * 60 * 24))); 
             
             // Tính tổng tiền: (Giá mỗi đêm * Số đêm * Số phòng) + Thuế 8%
+            // Ưu tiên sử dụng giá từ RoomType nếu có, nếu không thì dùng giá từ Room
             const rooms = bk.Rooms || 1;
-            const basePrice = (bk.Price || 0) * nights * rooms;
+            const pricePerNight = bk.RoomTypePrice ? parseFloat(bk.RoomTypePrice) : (parseFloat(bk.Price) || 0);
+            const basePrice = pricePerNight * nights * rooms;
             const tax = basePrice * 0.08;
             const total = basePrice + tax;
 
@@ -740,7 +754,34 @@ function renderBookings(bookings) {
                     <td><strong>${nights} đêm</strong></td>
                     <td>${guestsInfo}</td>
                     <td style="color:#d4111e; font-weight:bold">${fmtMoney(total)}</td>
-                    <td><span class="badge ${badgeClass}" style="padding: 5px 10px; font-size: 12px;">${statusLabel}</span></td>
+                    <td>
+                        <span class="badge ${badgeClass}" style="padding: 5px 10px; font-size: 12px;">${statusLabel}</span>
+                        ${bk.DepositAmount && bk.DepositAmount > 0 ? `
+                            <br>
+                            <small style="color:#856404; display:inline-block; margin-top:3px;">
+                                <i class="fas fa-money-bill-wave"></i> Đặt cọc: ${fmtMoney(bk.DepositAmount)}
+                            </small>
+                            <br>
+                            ${bk.DepositStatus === 'confirmed' ? 
+                                '<small style="color:#28a745; display:inline-block; margin-top:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận đặt cọc</small>' : 
+                                '<small style="color:#ffc107; display:inline-block; margin-top:3px;"><i class="fas fa-clock"></i> Chưa xác nhận đặt cọc</small>'
+                            }
+                        ` : ''}
+                        ${bk.Status === 'CheckedIn' || bk.Status === 'CheckedOut' ? `
+                            <br>
+                            ${bk.CheckInConfirmed ? 
+                                '<small style="color:#28a745; display:inline-block; margin-top:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in</small>' : 
+                                '<small style="color:#ffc107; display:inline-block; margin-top:3px;"><i class="fas fa-clock"></i> Chưa xác nhận Check-in</small>'
+                            }
+                        ` : ''}
+                        ${bk.Status === 'CheckedOut' ? `
+                            <br>
+                            ${bk.CheckOutConfirmed ? 
+                                '<small style="color:#28a745; display:inline-block; margin-top:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-out</small>' : 
+                                '<small style="color:#ffc107; display:inline-block; margin-top:3px;"><i class="fas fa-clock"></i> Chưa xác nhận Check-out</small>'
+                            }
+                        ` : ''}
+                    </td>
                     <td>
                         ${bk.Status === 'Pending' ? `
                             <button onclick="updateBookingStatus(${bk.BookingID}, 'Confirmed')" class="btn btn-sm btn-success" title="Duyệt đơn"><i class="fas fa-check"></i></button>
@@ -857,7 +898,9 @@ async function viewBookingDetail(bookingId) {
         const outDate = new Date(booking.CheckOutDate);
         const nights = Math.max(1, Math.ceil((outDate - inDate) / (1000 * 60 * 60 * 24)));
         const rooms = booking.Rooms || 1;
-        const basePrice = (booking.Price || 0) * nights * rooms;
+        // Ưu tiên sử dụng giá từ RoomType nếu có, nếu không thì dùng giá từ Room
+        const pricePerNight = booking.RoomTypePrice ? parseFloat(booking.RoomTypePrice) : (parseFloat(booking.Price) || 0);
+        const basePrice = pricePerNight * nights * rooms;
         const tax = basePrice * 0.08;
         const total = basePrice + tax;
         
@@ -899,8 +942,47 @@ async function viewBookingDetail(bookingId) {
                 <div style="background:#f8f9fa; padding:15px; border-radius:6px; margin-bottom:20px;">
                     <h4 style="margin-top:0; color:#003580;">Thông tin phòng</h4>
                     <p><strong>Tên phòng:</strong> ${booking.RoomName}</p>
-                    <p><strong>Giá mỗi đêm:</strong> ${fmtMoney(booking.Price || 0)}</p>
+                    ${booking.RoomTypeName ? `<p><strong>Loại phòng:</strong> ${booking.RoomTypeName}</p>` : ''}
+                    <p><strong>Giá mỗi đêm:</strong> ${fmtMoney(pricePerNight)}</p>
                 </div>
+                
+                ${booking.DepositAmount && booking.DepositAmount > 0 ? `
+                <div style="background:#fff3cd; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #ffc107;">
+                    <h4 style="margin-top:0; color:#856404;"><i class="fas fa-money-bill-wave"></i> Thông tin Đặt cọc</h4>
+                    <p><strong>Số tiền đặt cọc:</strong> <span style="color:#d9534f; font-weight:bold;">${fmtMoney(booking.DepositAmount)}</span></p>
+                    <p><strong>Trạng thái:</strong> 
+                        ${booking.DepositStatus === 'confirmed' ? 
+                            '<span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span>' : 
+                            '<span style="color:#ffc107;"><i class="fas fa-clock"></i> Chưa xác nhận</span>'
+                        }
+                    </p>
+                    ${booking.DepositInfo ? (() => {
+                        try {
+                            const depositInfo = typeof booking.DepositInfo === 'string' ? JSON.parse(booking.DepositInfo) : booking.DepositInfo;
+                            return `
+                                <p><strong>Thông tin chuyển khoản:</strong></p>
+                                <ul style="margin-left:20px; color:#333;">
+                                    <li>Số tài khoản: <strong>${depositInfo.accountNumber || 'N/A'}</strong></li>
+                                    <li>Tên ngân hàng: <strong>${depositInfo.bankName || 'N/A'}</strong></li>
+                                    <li>Chủ tài khoản: <strong>${depositInfo.accountName || 'N/A'}</strong></li>
+                                    <li>Nội dung: <strong>${depositInfo.content || 'N/A'}</strong></li>
+                                </ul>
+                            `;
+                        } catch (e) {
+                            return '';
+                        }
+                    })() : ''}
+                </div>
+                ` : ''}
+                
+                ${booking.CheckInConfirmed || booking.CheckOutConfirmed || booking.RoomInspection ? `
+                <div style="background:#e7f3ff; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #007bff;">
+                    <h4 style="margin-top:0; color:#003580;"><i class="fas fa-user-tie"></i> Trạng thái Xác nhận của Nhân viên</h4>
+                    ${booking.CheckInConfirmed ? `<p><strong>Check-in:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span></p>` : '<p><strong>Check-in:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
+                    ${booking.CheckOutConfirmed ? `<p><strong>Check-out:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span></p>` : '<p><strong>Check-out:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
+                    ${booking.RoomInspection ? `<p><strong>Kiểm tra phòng:</strong><br><span style="background:white; padding:10px; border-radius:4px; display:inline-block; margin-top:5px; border:1px solid #ddd;">${booking.RoomInspection}</span></p>` : ''}
+                </div>
+                ` : ''}
                 
                 <div style="background:#f8f9fa; padding:15px; border-radius:6px; margin-bottom:20px;">
                     <h4 style="margin-top:0; color:#003580;">Chi tiết đặt phòng</h4>
@@ -943,6 +1025,131 @@ async function viewBookingDetail(bookingId) {
         alert("Lỗi tải chi tiết đơn đặt phòng!");
     }
 }
+
+/* ================= QUẢN LÝ NHÂN VIÊN ================= */
+let allStaff = [];
+let allHotelsForAssign = [];
+
+async function loadStaff() {
+    try {
+        const res = await fetchWithAuth('/users/staff');
+        if (!res.ok) throw new Error('Lỗi tải danh sách nhân viên');
+        allStaff = await res.json();
+        renderStaff(allStaff);
+    } catch (err) {
+        console.error(err);
+        document.getElementById('staff-table-body').innerHTML = 
+            '<tr><td colspan="6" style="text-align:center;color:#dc3545;">Lỗi tải dữ liệu!</td></tr>';
+    }
+}
+
+function renderStaff(staffList) {
+    const tbody = document.getElementById('staff-table-body');
+    if (!staffList || staffList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có nhân viên nào</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = staffList.map((staff, index) => {
+        const displayId = index + 1; // ID hiển thị theo thứ tự
+        const hotels = staff.AssignedHotels ? staff.AssignedHotels.split('|').map(h => {
+            const [id, name] = h.split(':');
+            return name || 'N/A';
+        }).join(', ') : 'Chưa phân công';
+        
+        return `
+            <tr>
+                <td>${displayId}</td>
+                <td>${staff.Username}</td>
+                <td>${staff.Email}</td>
+                <td>${hotels || 'Chưa phân công'}</td>
+                <td>${new Date(staff.CreatedAt).toLocaleDateString('vi-VN')}</td>
+                <td>
+                    <button onclick="openAssignHotelModal(${staff.AccountID})" class="btn btn-sm btn-primary">
+                        <i class="fas fa-hotel"></i> Phân công
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Thêm nhân viên
+document.getElementById('btn-add-staff')?.addEventListener('click', () => {
+    document.getElementById('staff-form').reset();
+    document.getElementById('modal-staff').style.display = 'flex';
+});
+
+document.getElementById('staff-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('staff-username').value;
+    const email = document.getElementById('staff-email').value;
+    const password = document.getElementById('staff-password').value;
+    
+    try {
+        const res = await fetchWithAuth('/users/staff', {
+            method: 'POST',
+            body: JSON.stringify({ username, email, password })
+        });
+        
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Lỗi tạo nhân viên');
+        }
+        
+        alert('Tạo nhân viên thành công!');
+        document.getElementById('modal-staff').style.display = 'none';
+        loadStaff();
+    } catch (err) {
+        alert(err.message);
+    }
+});
+
+// Phân công khách sạn
+async function openAssignHotelModal(staffId) {
+    document.getElementById('assign-staff-id').value = staffId;
+    
+    // Load danh sách khách sạn
+    try {
+        const res = await fetchWithAuth('/rooms');
+        if (!res.ok) throw new Error('Lỗi tải danh sách khách sạn');
+        allHotelsForAssign = await res.json();
+        
+        const select = document.getElementById('assign-hotel-select');
+        select.innerHTML = '<option value="">-- Chọn khách sạn --</option>' +
+            allHotelsForAssign.map(h => 
+                `<option value="${h.RoomID}">${h.RoomName} - ${h.Address || ''}</option>`
+            ).join('');
+        
+        document.getElementById('modal-assign-hotel').style.display = 'flex';
+    } catch (err) {
+        alert('Lỗi tải danh sách khách sạn: ' + err.message);
+    }
+}
+
+document.getElementById('assign-hotel-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const staffId = document.getElementById('assign-staff-id').value;
+    const hotelId = document.getElementById('assign-hotel-select').value;
+    
+    try {
+        const res = await fetchWithAuth('/users/staff/assign-hotel', {
+            method: 'POST',
+            body: JSON.stringify({ staffId: parseInt(staffId), hotelId: parseInt(hotelId) })
+        });
+        
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Lỗi phân công khách sạn');
+        }
+        
+        alert('Phân công khách sạn thành công!');
+        document.getElementById('modal-assign-hotel').style.display = 'none';
+        loadStaff();
+    } catch (err) {
+        alert(err.message);
+    }
+});
 
 /* ================= ĐÓNG MODAL CHUNG ================= */
 document.querySelectorAll(".close-modal").forEach(btn => {

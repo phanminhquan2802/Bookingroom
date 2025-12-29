@@ -35,11 +35,13 @@ document.querySelector('.login-form').addEventListener('submit', async function(
             localStorage.setItem('role', data.role);
             localStorage.setItem('username', data.username);
 
-            // Chuyển hướng dựa trên Role (1: Admin, 2: Guest)
+            // Chuyển hướng dựa trên Role (1: Admin, 2: Guest, 3: Staff)
             if (data.role === 1) {
-                window.location.href = '../admin-dashboard/admin.html'; // Sửa đường dẫn trang Admin của bạn
+                window.location.href = '../admin-dashboard/admin.html';
+            } else if (data.role === 3) {
+                window.location.href = '../staff-dashboard/staff.html';
             } else {
-                window.location.href = '../customer/index.html'; // Sửa đường dẫn trang chủ Khách
+                window.location.href = '../customer/index.html';
             }
         } else {
             // -- Thất bại --

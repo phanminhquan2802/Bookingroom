@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Khách sạn - Nhân viên</title>
+    <link rel="stylesheet" href="staff-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>Staff Dashboard</h3>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="menu-item active" data-target="section-hotels">
+                <a href="#"><i class="fas fa-hotel"></i> Khách sạn của tôi</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h2 id="section-title">Khách sạn của tôi</h2>
+            <div class="user-info">
+                <span>Xin chào, <b id="staff-name">Nhân viên</b></span>
+            </div>
+        </header>
+
+        <main>
+            <section id="section-hotels" class="content-section active-section">
+                <div id="hotels-list" class="hotels-grid">
+                    <p>Đang tải...</p>
+                </div>
+            </section>
+
+            <section id="section-bookings" class="content-section">
+                <div class="section-header">
+                    <h3 id="hotel-name-display">Danh sách Đặt phòng</h3>
+                    <button class="btn btn-secondary" onclick="backToHotels()">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+                <div class="section-filters">
+                    <select id="booking-status-filter" onchange="loadBookings()">
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="Pending">Chờ duyệt</option>
+                        <option value="Confirmed">Đã xác nhận</option>
+                        <option value="CheckedIn">Đang ở</option>
+                        <option value="CheckedOut">Đã trả phòng</option>
+                        <option value="Cancelled">Đã hủy</option>
+                    </select>
+                    <input type="date" id="checkin-filter" onchange="loadBookings()" placeholder="Từ ngày check-in">
+                    <input type="date" id="checkout-filter" onchange="loadBookings()" placeholder="Đến ngày check-out">
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Khách hàng</th>
+                                <th>Loại phòng</th>
+                                <th>Check-in</th>
+                                <th>Check-out</th>
+                                <th>Số đêm</th>
+                                <th>Khách/Phòng</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookings-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-booking-detail" class="modal">
+        <div class="modal-content modal-lg">
+            <span class="close-modal">&times;</span>
+            <h3>Chi tiết Đặt phòng</h3>
+            <div id="booking-detail-content">
+                <p>Đang tải...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-confirm-checkout" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Xác nhận Check-out & Kiểm tra Phòng</h3>
+            <form id="confirm-checkout-form">
+                <input type="hidden" id="confirm-checkout-booking-id">
+                <div class="form-group">
+                    <label>Kiểm tra phòng:</label>
+                    <textarea id="room-inspection" rows="5" placeholder="Ghi chú về tình trạng phòng (ví dụ: Phòng sạch sẽ, không có thiết bị hỏng, không có đồ vật mất mát...)"></textarea>
+                    <small style="color:#666;">Vui lòng kiểm tra và ghi chú về tình trạng phòng sau khi khách trả phòng</small>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">
+                        <i class="fas fa-check-circle"></i> Xác nhận
+                    </button>
+                    <button type="button" onclick="closeConfirmCheckOutModal()" class="btn btn-secondary" style="flex:1;">
+                        Hủy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="staff.js"></script>
+</body>
+</html>
+

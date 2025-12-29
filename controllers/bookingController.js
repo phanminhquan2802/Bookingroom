@@ -189,141 +189,322 @@ exports.createBooking = (req, res) => {
         return res.status(400).json({ error: guestsValidation.error });
     }
     
-    // 4. Kiểm tra và giảm số lượng phòng nếu có roomTypeId
+    // 4. Kiểm tra số lượng phòng có đủ không (KHÔNG giảm ngay, chỉ kiểm tra)
     if (roomTypeId) {
-        updateRoomAvailability(roomTypeId, guestsValidation.rooms, 'decrease', (err, availabilityResult) => {
-            if (err) {
-                console.error('Lỗi kiểm tra số lượng phòng:', err);
-                return res.status(500).json({ error: "Lỗi kiểm tra số lượng phòng" });
-            }
-            
-            if (!availabilityResult.success) {
-                if (!availabilityResult.skipped) {
-                    return res.status(400).json({ error: availabilityResult.error });
+        // Kiểm tra số lượng phòng có đủ không
+        db.query(
+            `SELECT AvailableRooms FROM RoomTypes WHERE RoomTypeID = ? AND IsDeleted = 0`,
+            [roomTypeId],
+            (err, results) => {
+                if (err) {
+                    console.error('Lỗi kiểm tra số lượng phòng:', err);
+                    return res.status(500).json({ error: "Lỗi kiểm tra số lượng phòng" });
                 }
+                
+                if (results.length === 0) {
+                    return res.status(400).json({ error: "Loại phòng không tồn tại!" });
+                }
+                
+                const availableRooms = results[0].AvailableRooms || 0;
+                if (availableRooms < guestsValidation.rooms) {
+                    return res.status(400).json({ error: `Chỉ còn ${availableRooms} phòng trống. Vui lòng chọn lại số lượng phòng!` });
+                }
+                
+                proceedWithBooking();
             }
-            
-            proceedWithBooking();
-        });
+        );
     } else {
         // Nếu không có roomTypeId, chỉ kiểm tra phòng có sẵn không (logic cũ)
-        checkRoomAvailability(roomId, checkIn, checkOut, (err, availability) => {
-            if (err) {
-                console.error('Lỗi kiểm tra phòng:', err);
-                return res.status(500).json({ error: "Lỗi kiểm tra phòng" });
-            }
-            
-            if (!availability.available) {
-                return res.status(400).json({ error: availability.error });
-            }
-            
+    checkRoomAvailability(roomId, checkIn, checkOut, (err, availability) => {
+        if (err) {
+            console.error('Lỗi kiểm tra phòng:', err);
+            return res.status(500).json({ error: "Lỗi kiểm tra phòng" });
+        }
+        
+        if (!availability.available) {
+            return res.status(400).json({ error: availability.error });
+        }
+        
             proceedWithBooking();
         });
     }
     
     function proceedWithBooking() {
-        // 5. Tạo booking với thông tin người và phòng
-        // Thử insert với các cột bổ sung nếu có
-        let insertColumns = 'AccountID, RoomID, Status, CheckInDate, CheckOutDate, Adults, Children, Rooms';
-        let insertValues = '?, ?, ?, ?, ?, ?, ?, ?';
-        let insertParams = [userId, roomId, 'Pending', checkIn, checkOut, guestsValidation.adults, guestsValidation.children, guestsValidation.rooms];
+        // 5. Tính số tiền đặt cọc (30% tổng giá trị)
+        // Lấy giá từ RoomType hoặc Room
+        const calculateDeposit = (callback) => {
+            if (roomTypeId) {
+                // Lấy giá từ RoomType
+                db.query(
+                    `SELECT Price FROM RoomTypes WHERE RoomTypeID = ?`,
+                    [roomTypeId],
+                    (err, results) => {
+                        if (err || results.length === 0) {
+                            return callback(0, null);
+                        }
+                        const pricePerNight = parseFloat(results[0].Price) || 0;
+                        const checkInDate = new Date(checkIn);
+                        const checkOutDate = new Date(checkOut);
+                        const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+                        const totalPrice = pricePerNight * nights * guestsValidation.rooms;
+                        const depositAmount = Math.round(totalPrice * 0.3); // 30% đặt cọc
+                        
+                        // Thông tin chuyển khoản (có thể lấy từ config hoặc hardcode)
+                        const depositInfo = JSON.stringify({
+                            accountNumber: '1234567890',
+                            bankName: 'Vietcombank',
+                            accountName: 'BOOKING HOTEL',
+                            content: `Dat coc booking`
+                        });
+                        
+                        callback(depositAmount, depositInfo);
+                    }
+                );
+            } else {
+                // Lấy giá từ Room
+                db.query(
+                    `SELECT Price FROM Rooms WHERE RoomID = ?`,
+                    [roomId],
+                    (err, results) => {
+                        if (err || results.length === 0) {
+                            return callback(0, null);
+                        }
+                        const pricePerNight = parseFloat(results[0].Price) || 0;
+                        const checkInDate = new Date(checkIn);
+                        const checkOutDate = new Date(checkOut);
+                        const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+                        const totalPrice = pricePerNight * nights * guestsValidation.rooms;
+                        const depositAmount = Math.round(totalPrice * 0.3); // 30% đặt cọc
+                        
+                        // Thông tin chuyển khoản
+                        const depositInfo = JSON.stringify({
+                            accountNumber: '1234567890',
+                            bankName: 'Vietcombank',
+                            accountName: 'BOOKING HOTEL',
+                            content: `Dat coc booking`
+                        });
+                        
+                        callback(depositAmount, depositInfo);
+                    }
+                );
+            }
+        };
         
-        // Thêm các cột bổ sung nếu có trong request
-        if (guestName || guestEmail || guestPhone || specialRequests || arrivalTime) {
-            // Kiểm tra xem các cột có tồn tại không bằng cách thử insert với các cột này
-            insertColumns += ', GuestName, GuestEmail, GuestPhone, SpecialRequests, ArrivalTime';
-            insertValues += ', ?, ?, ?, ?, ?';
-            insertParams.push(
-                guestName || null,
-                guestEmail || null,
-                guestPhone || null,
-                specialRequests || null,
-                arrivalTime || null
+        // Tính đặt cọc trước khi tạo booking
+        calculateDeposit((depositAmount, depositInfo) => {
+            // 6. Tạo booking với thông tin người và phòng
+            // Thử insert với các cột bổ sung nếu có
+            let insertColumns = 'AccountID, RoomID, Status, CheckInDate, CheckOutDate, Adults, Children, Rooms';
+            let insertValues = '?, ?, ?, ?, ?, ?, ?, ?';
+            let insertParams = [userId, roomId, 'Pending', checkIn, checkOut, guestsValidation.adults, guestsValidation.children, guestsValidation.rooms];
+            
+            // Thêm các cột bổ sung nếu có trong request
+            if (guestName || guestEmail || guestPhone || specialRequests || arrivalTime) {
+                // Kiểm tra xem các cột có tồn tại không bằng cách thử insert với các cột này
+                insertColumns += ', GuestName, GuestEmail, GuestPhone, SpecialRequests, ArrivalTime';
+                insertValues += ', ?, ?, ?, ?, ?';
+                insertParams.push(
+                    guestName || null,
+                    guestEmail || null,
+                    guestPhone || null,
+                    specialRequests || null,
+                    arrivalTime || null
+                );
+            }
+            
+            // Thêm RoomTypeID nếu có (thử insert, nếu cột không tồn tại thì bỏ qua)
+            if (roomTypeId) {
+                try {
+                    insertColumns += ', RoomTypeID';
+                    insertValues += ', ?';
+                    insertParams.push(roomTypeId);
+                } catch (e) {
+                    // Bỏ qua nếu không thể thêm
+                }
+            }
+            
+            // Thêm thông tin đặt cọc nếu có
+            if (depositAmount > 0) {
+                try {
+                    insertColumns += ', DepositAmount, DepositStatus, DepositInfo';
+                    insertValues += ', ?, ?, ?';
+                    insertParams.push(depositAmount, 'pending', depositInfo);
+                } catch (e) {
+                    // Bỏ qua nếu cột không tồn tại
+                }
+            }
+            
+            db.query(
+                `INSERT INTO Bookings (${insertColumns}) VALUES (${insertValues})`,
+                insertParams,
+                (err, result) => {
+                    if (err) {
+                        console.error('Lỗi tạo booking:', err);
+                        
+                        // Nếu lỗi khi tạo booking, cần tăng lại số lượng phòng đã giảm
+                        if (roomTypeId) {
+                            updateRoomAvailability(roomTypeId, guestsValidation.rooms, 'increase', (rollbackErr) => {
+                                if (rollbackErr) {
+                                    console.error('Lỗi rollback số lượng phòng:', rollbackErr);
+                                }
+                            });
+                        }
+                        // Nếu lỗi do thiếu cột, thử lại không có các cột bổ sung
+                        if (err.message.includes("Unknown column 'GuestName'") || 
+                            err.message.includes("Unknown column 'GuestEmail'") ||
+                            err.message.includes("Unknown column 'GuestPhone'") ||
+                            err.message.includes("Unknown column 'SpecialRequests'") ||
+                            err.message.includes("Unknown column 'ArrivalTime'") ||
+                            err.message.includes("Unknown column 'RoomTypeID'")) {
+                            // Thử lại với các cột cơ bản
+                            db.query(
+                                `INSERT INTO Bookings (AccountID, RoomID, Status, CheckInDate, CheckOutDate, Adults, Children, Rooms) 
+                                 VALUES (?, ?, 'Pending', ?, ?, ?, ?, ?)`,
+                                [userId, roomId, checkIn, checkOut, guestsValidation.adults, guestsValidation.children, guestsValidation.rooms],
+                                (err2, result2) => {
+                                    if (err2) {
+                                        // Nếu lỗi do thiếu cột Adults, Children, Rooms
+                                        if (err2.message.includes("Unknown column 'Adults'")) {
+                                            return res.status(500).json({ 
+                                                error: "Database chưa được cập nhật! Vui lòng chạy file migration: migrations/add_guests_rooms_to_bookings.sql" 
+                                            });
+                                        }
+                                        return res.status(500).json({ error: "Lỗi đặt phòng: " + err2.message });
+                                    }
+                                    res.json({ 
+                                        message: "Đặt phòng thành công!",
+                                        bookingId: result2.insertId,
+                                        guests: {
+                                            adults: guestsValidation.adults,
+                                            children: guestsValidation.children,
+                                            rooms: guestsValidation.rooms
+                                        },
+                                        note: "Thông tin bổ sung chưa được lưu. Vui lòng chạy migration để thêm các cột GuestName, GuestEmail, GuestPhone, SpecialRequests, ArrivalTime vào bảng Bookings."
+                                    });
+                                }
+                            );
+                            return;
+                        }
+                        // Nếu lỗi do thiếu cột Adults, Children, Rooms
+                        if (err.message.includes("Unknown column 'Adults'")) {
+                            return res.status(500).json({ 
+                                error: "Database chưa được cập nhật! Vui lòng chạy file migration: migrations/add_guests_rooms_to_bookings.sql" 
+                            });
+                        }
+                        return res.status(500).json({ error: "Lỗi đặt phòng: " + err.message });
+                    }
+                    // Cập nhật DepositInfo với BookingID nếu có
+                    if (depositAmount > 0 && depositInfo) {
+                        try {
+                            const depositInfoObj = JSON.parse(depositInfo);
+                            depositInfoObj.content = `Dat coc ${result.insertId}`;
+                            db.query(
+                                `UPDATE Bookings SET DepositInfo = ? WHERE BookingID = ?`,
+                                [JSON.stringify(depositInfoObj), result.insertId],
+                                () => {} // Không cần xử lý lỗi
+                            );
+                        } catch (e) {
+                            // Bỏ qua nếu lỗi
+                        }
+                    }
+                    
+                    res.json({ 
+                        message: "Đặt phòng thành công! Vui lòng đặt cọc để giữ phòng.",
+                        bookingId: result.insertId,
+                        guests: {
+                            adults: guestsValidation.adults,
+                            children: guestsValidation.children,
+                            rooms: guestsValidation.rooms
+                        },
+                        deposit: {
+                            amount: depositAmount,
+                            status: 'pending',
+                            info: depositInfo ? JSON.parse(depositInfo) : null
+                        }
+                    });
+                }
+            );
+        });
+    }
+};
+
+// Customer xác nhận đã chuyển khoản đặt cọc
+exports.confirmDeposit = (req, res) => {
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+    
+    // 1. Lấy thông tin booking và kiểm tra quyền sở hữu
+    db.query(
+        `SELECT Status, RoomTypeID, Rooms, AccountID, DepositStatus, DepositAmount 
+         FROM Bookings WHERE BookingID = ?`,
+        [bookingId],
+        (err, results) => {
+            if (err) {
+                console.error('Lỗi lấy booking:', err);
+                return res.status(500).json({ error: "Lỗi lấy thông tin đặt phòng" });
+            }
+            
+            if (results.length === 0) {
+                return res.status(404).json({ error: "Không tìm thấy đơn đặt phòng!" });
+            }
+            
+            const booking = results[0];
+            
+            // 2. Kiểm tra booking thuộc về user hiện tại
+            if (booking.AccountID !== userId) {
+                return res.status(403).json({ error: "Bạn không có quyền xác nhận đặt cọc cho đơn này!" });
+            }
+            
+            // 3. Kiểm tra đã có đặt cọc chưa
+            if (!booking.DepositAmount || booking.DepositAmount <= 0) {
+                return res.status(400).json({ error: "Đơn đặt phòng này không yêu cầu đặt cọc!" });
+            }
+            
+            // 4. Kiểm tra trạng thái đặt cọc
+            if (booking.DepositStatus === 'confirmed') {
+                return res.status(400).json({ error: "Đặt cọc đã được xác nhận rồi!" });
+            }
+            
+            // 5. Cập nhật trạng thái đặt cọc và giảm số lượng phòng
+            db.query(
+                `UPDATE Bookings SET DepositStatus = 'confirmed', Status = 'Confirmed' WHERE BookingID = ?`,
+                [bookingId],
+                (err, updateResult) => {
+                    if (err) {
+                        console.error('Lỗi cập nhật đặt cọc:', err);
+                        return res.status(500).json({ error: "Lỗi cập nhật đặt cọc" });
+                    }
+                    
+                    // 6. Giảm số lượng phòng nếu có RoomTypeID
+                    if (booking.RoomTypeID) {
+                        updateRoomAvailability(booking.RoomTypeID, booking.Rooms, 'decrease', (err, availabilityResult) => {
+                            if (err) {
+                                console.error('Lỗi giảm số lượng phòng:', err);
+                                // Không rollback vì đã cập nhật status rồi
+                            }
+                            
+                            if (!availabilityResult.success && !availabilityResult.skipped) {
+                                console.error('Không thể giảm số lượng phòng:', availabilityResult.error);
+                                // Không rollback vì đã cập nhật status rồi
+                            }
+                            
+                            res.json({ 
+                                message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ.",
+                                bookingId: bookingId,
+                                depositStatus: 'confirmed'
+                            });
+                        });
+                    } else {
+                        res.json({ 
+                            message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ.",
+                            bookingId: bookingId,
+                            depositStatus: 'confirmed'
+                        });
+                    }
+                }
             );
         }
-        
-        // Thêm RoomTypeID nếu có (thử insert, nếu cột không tồn tại thì bỏ qua)
-        if (roomTypeId) {
-            try {
-                insertColumns += ', RoomTypeID';
-                insertValues += ', ?';
-                insertParams.push(roomTypeId);
-            } catch (e) {
-                // Bỏ qua nếu không thể thêm
-            }
-        }
-        
-        db.query(
-            `INSERT INTO Bookings (${insertColumns}) VALUES (${insertValues})`,
-            insertParams,
-            (err, result) => {
-                if (err) {
-                    console.error('Lỗi tạo booking:', err);
-                    
-                    // Nếu lỗi khi tạo booking, cần tăng lại số lượng phòng đã giảm
-                    if (roomTypeId) {
-                        updateRoomAvailability(roomTypeId, guestsValidation.rooms, 'increase', (rollbackErr) => {
-                            if (rollbackErr) {
-                                console.error('Lỗi rollback số lượng phòng:', rollbackErr);
-                            }
-                        });
-                    }
-                    // Nếu lỗi do thiếu cột, thử lại không có các cột bổ sung
-                    if (err.message.includes("Unknown column 'GuestName'") || 
-                        err.message.includes("Unknown column 'GuestEmail'") ||
-                        err.message.includes("Unknown column 'GuestPhone'") ||
-                        err.message.includes("Unknown column 'SpecialRequests'") ||
-                        err.message.includes("Unknown column 'ArrivalTime'") ||
-                        err.message.includes("Unknown column 'RoomTypeID'")) {
-                        // Thử lại với các cột cơ bản
-                        db.query(
-                            `INSERT INTO Bookings (AccountID, RoomID, Status, CheckInDate, CheckOutDate, Adults, Children, Rooms) 
-                             VALUES (?, ?, 'Pending', ?, ?, ?, ?, ?)`,
-                            [userId, roomId, checkIn, checkOut, guestsValidation.adults, guestsValidation.children, guestsValidation.rooms],
-                            (err2, result2) => {
-                                if (err2) {
-                                    // Nếu lỗi do thiếu cột Adults, Children, Rooms
-                                    if (err2.message.includes("Unknown column 'Adults'")) {
-                                        return res.status(500).json({ 
-                                            error: "Database chưa được cập nhật! Vui lòng chạy file migration: migrations/add_guests_rooms_to_bookings.sql" 
-                                        });
-                                    }
-                                    return res.status(500).json({ error: "Lỗi đặt phòng: " + err2.message });
-                                }
-                                res.json({ 
-                                    message: "Đặt phòng thành công!",
-                                    bookingId: result2.insertId,
-                                    guests: {
-                                        adults: guestsValidation.adults,
-                                        children: guestsValidation.children,
-                                        rooms: guestsValidation.rooms
-                                    },
-                                    note: "Thông tin bổ sung chưa được lưu. Vui lòng chạy migration để thêm các cột GuestName, GuestEmail, GuestPhone, SpecialRequests, ArrivalTime vào bảng Bookings."
-                                });
-                            }
-                        );
-                        return;
-                    }
-                    // Nếu lỗi do thiếu cột Adults, Children, Rooms
-                    if (err.message.includes("Unknown column 'Adults'")) {
-                        return res.status(500).json({ 
-                            error: "Database chưa được cập nhật! Vui lòng chạy file migration: migrations/add_guests_rooms_to_bookings.sql" 
-                        });
-                    }
-                    return res.status(500).json({ error: "Lỗi đặt phòng: " + err.message });
-                }
-                res.json({ 
-                    message: "Đặt phòng thành công!",
-                    bookingId: result.insertId,
-                    guests: {
-                        adults: guestsValidation.adults,
-                        children: guestsValidation.children,
-                        rooms: guestsValidation.rooms
-                    }
-                });
-            }
-        );
-    }
+    );
 };
 
 // Customer hủy booking của chính họ
@@ -446,7 +627,10 @@ exports.getMyBookings = (req, res) => {
                IFNULL(B.Children, 0) AS Children,
                IFNULL(B.Rooms, 1) AS Rooms,
                B.CancelReason,
-               RT.RoomTypeName, RT.RoomTypeID, RT.Price AS RoomTypePrice
+               RT.RoomTypeName, RT.RoomTypeID, RT.Price AS RoomTypePrice,
+               IFNULL(B.DepositAmount, 0) AS DepositAmount,
+               IFNULL(B.DepositStatus, 'none') AS DepositStatus,
+               B.DepositInfo
         FROM Bookings B 
         JOIN Rooms R ON B.RoomID = R.RoomID 
         LEFT JOIN Reviews Rv ON B.BookingID = Rv.BookingID
@@ -468,10 +652,18 @@ exports.getAllBookings = (req, res) => {
                IFNULL(B.Rooms, 1) AS Rooms,
                B.GuestName, B.GuestEmail, B.GuestPhone, B.SpecialRequests, B.ArrivalTime,
                B.CancelReason,
-               A.Username, A.Email, R.RoomName, R.Price, R.ImageURL
+               A.Username, A.Email, R.RoomName, R.Price, R.ImageURL,
+               RT.RoomTypeName, RT.RoomTypeID, RT.Price AS RoomTypePrice,
+               IFNULL(B.CheckInConfirmed, 0) AS CheckInConfirmed,
+               IFNULL(B.CheckOutConfirmed, 0) AS CheckOutConfirmed,
+               B.RoomInspection,
+               IFNULL(B.DepositAmount, 0) AS DepositAmount,
+               IFNULL(B.DepositStatus, 'none') AS DepositStatus,
+               B.DepositInfo
         FROM Bookings B
         JOIN Accounts A ON B.AccountID = A.AccountID
         JOIN Rooms R ON B.RoomID = R.RoomID
+        LEFT JOIN RoomTypes RT ON B.RoomTypeID = RT.RoomTypeID
         ORDER BY B.BookingDate DESC
     `;
     db.query(sql, (err, results) => {
@@ -522,16 +714,16 @@ const validateStatusTransition = (currentStatus, newStatus, checkInDate, checkOu
         (currentStatus === 'CheckedIn' && newStatus === 'CheckedOut');
     
     if (isForwardTransition) {
-        if (newStatus === 'CheckedIn' && checkIn > today) {
-            return { valid: false, error: "Chỉ có thể check-in khi ngày check-in đã đến hoặc đã qua!" };
-        }
-        
-        if (newStatus === 'CheckedOut' && checkOut > today) {
-            return { valid: false, error: "Chỉ có thể check-out khi ngày check-out đã đến hoặc đã qua!" };
-        }
-        
-        if (newStatus === 'CheckedOut' && currentStatus !== 'CheckedIn') {
-            return { valid: false, error: "Chỉ có thể check-out khi đã check-in!" };
+    if (newStatus === 'CheckedIn' && checkIn > today) {
+        return { valid: false, error: "Chỉ có thể check-in khi ngày check-in đã đến hoặc đã qua!" };
+    }
+    
+    if (newStatus === 'CheckedOut' && checkOut > today) {
+        return { valid: false, error: "Chỉ có thể check-out khi ngày check-out đã đến hoặc đã qua!" };
+    }
+    
+    if (newStatus === 'CheckedOut' && currentStatus !== 'CheckedIn') {
+        return { valid: false, error: "Chỉ có thể check-out khi đã check-in!" };
         }
     }
     
@@ -635,12 +827,12 @@ exports.updateBookingStatus = (req, res) => {
             
             function proceedWithStatusUpdate() {
                 // 7. Cập nhật trạng thái
-                db.query(
-                    "UPDATE Bookings SET Status = ? WHERE BookingID = ?",
-                    [status, bookingId],
-                    (err) => {
-                        if (err) {
-                            console.error('Lỗi cập nhật trạng thái:', err);
+            db.query(
+                "UPDATE Bookings SET Status = ? WHERE BookingID = ?",
+                [status, bookingId],
+                (err) => {
+                    if (err) {
+                        console.error('Lỗi cập nhật trạng thái:', err);
                             // Rollback số lượng phòng nếu lỗi
                             if (availabilityOperation && roomTypeId) {
                                 const rollbackOperation = availabilityOperation === 'increase' ? 'decrease' : 'increase';
@@ -650,15 +842,15 @@ exports.updateBookingStatus = (req, res) => {
                                     }
                                 });
                             }
-                            return res.status(500).json({ error: "Lỗi cập nhật trạng thái" });
-                        }
-                        res.json({ 
-                            message: `Cập nhật trạng thái thành công từ ${currentStatus} sang ${status}!`,
-                            oldStatus: currentStatus,
-                            newStatus: status
-                        });
+                        return res.status(500).json({ error: "Lỗi cập nhật trạng thái" });
                     }
-                );
+                    res.json({ 
+                        message: `Cập nhật trạng thái thành công từ ${currentStatus} sang ${status}!`,
+                        oldStatus: currentStatus,
+                        newStatus: status
+                    });
+                }
+            );
             }
         }
     );

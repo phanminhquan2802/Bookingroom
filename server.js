@@ -29,6 +29,7 @@ const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const publicCategoryRoutes = require('./routes/publicCategoryRoutes');
 const roomTypeRoutes = require('./routes/roomTypeRoutes');
+const staffRoutes = require('./routes/staffRoutes');
 
 /* =========================================
    3. ĐỊNH NGHĨA ĐƯỜNG DẪN API (Mounting)
@@ -65,6 +66,10 @@ app.use('/api', publicCategoryRoutes);
 // API Loại phòng (RoomTypes)
 // Đường dẫn: /api/hotels/:hotelId/roomtypes, /api/roomtypes/:id
 app.use('/api', roomTypeRoutes);
+
+// API Nhân viên (Staff)
+// Đường dẫn: /api/staff/*
+app.use('/api/staff', staffRoutes);
 
 // API gửi email tùy chỉnh
 // Body: { userEmail, emailSubject, emailBody }

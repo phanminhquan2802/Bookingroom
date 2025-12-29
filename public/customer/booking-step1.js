@@ -154,10 +154,6 @@ function formatDates() {
     document.getElementById('summary-checkin').textContent = formatDate(checkIn);
     document.getElementById('summary-checkout').textContent = formatDate(checkOut);
     document.getElementById('summary-duration').textContent = `${days} đêm`;
-    
-    // Tip box
-    document.getElementById('tip-checkin-time').textContent = `Từ 14:00`;
-    document.getElementById('tip-checkout-time').textContent = `Trước 12:00`;
 }
 
 function calculatePrice() {
@@ -224,9 +220,7 @@ function setupFormValidation() {
             firstName: document.getElementById('first-name').value,
             email: email.value,
             phone: document.getElementById('country-code').value + document.getElementById('phone').value,
-            businessTravel: document.getElementById('business-travel').checked,
-            specialRequests: document.getElementById('special-requests').value,
-            arrivalTime: document.getElementById('arrival-time').value
+            specialRequests: document.getElementById('special-requests').value
         };
         
         // Lưu vào bookingData và localStorage
