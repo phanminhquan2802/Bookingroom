@@ -52,7 +52,8 @@ exports.searchRooms = (req, res) => {
     
     // Thêm điều kiện: hotel phải có ít nhất 1 RoomType phù hợp
     if (roomsNum > 0 && (adultsNum > 0 || childrenNum > 0)) {
-        const totalGuests = adultsNum + childrenNum;
+        // Tính tổng số người: 2 trẻ em = 1 người lớn
+        const totalGuests = adultsNum + Math.ceil(childrenNum / 2);
         
         if (checkInDate && checkOutDate) {
             // Có checkIn/checkOut: kiểm tra ActualAvailableRooms
@@ -62,7 +63,7 @@ exports.searchRooms = (req, res) => {
                 AND RT.IsDeleted = 0
                 AND (IFNULL(RT.MaxGuests, 2) * ?) >= ?
                 AND (
-                    (IFNULL(RT.AvailableRooms, 10) + COALESCE(
+                    (IFNULL(RT.AvailableRooms, 0) + COALESCE(
                         (SELECT SUM(B.Rooms) 
                          FROM Bookings B 
                          WHERE B.RoomTypeID = RT.RoomTypeID 
@@ -86,7 +87,7 @@ exports.searchRooms = (req, res) => {
                 SELECT 1 FROM RoomTypes RT
                 WHERE RT.HotelID = R.RoomID
                 AND RT.IsDeleted = 0
-                AND IFNULL(RT.AvailableRooms, 10) >= ?
+                AND IFNULL(RT.AvailableRooms, 0) >= ?
                 AND (IFNULL(RT.MaxGuests, 2) * ?) >= ?
             )`;
             params.push(roomsNum, roomsNum, totalGuests);

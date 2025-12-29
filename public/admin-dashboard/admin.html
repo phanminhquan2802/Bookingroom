@@ -51,6 +51,9 @@
         <main>
             <section id="section-accounts" class="content-section active-section">
                 <div class="section-actions">
+                    <input type="text" id="account-search" placeholder="Tìm kiếm tài khoản (tên, email)..." 
+                           style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 300px; margin-right: 10px;"
+                           onkeyup="filterAccounts()">
                     <button class="btn btn-primary" id="btn-add-account">+ Thêm Tài khoản</button>
                 </div>
                 <div class="table-responsive">
@@ -171,6 +174,9 @@
 
             <section id="section-staff" class="content-section">
                 <div class="section-actions">
+                    <input type="text" id="staff-search" placeholder="Tìm kiếm nhân viên (tên, email, khách sạn)..." 
+                           style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 300px; margin-right: 10px;"
+                           onkeyup="filterStaff()">
                     <button class="btn btn-primary" id="btn-add-staff">+ Thêm Nhân viên</button>
                 </div>
                 <div class="table-responsive">

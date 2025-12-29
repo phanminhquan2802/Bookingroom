@@ -10,11 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     formatDates();
     displayRoomType();
     
-    // Kiểm tra xem có bookingId trong localStorage không (từ lần đặt phòng trước)
-    const bookingId = localStorage.getItem('current_booking_id');
-    if (bookingId) {
-        checkDepositStatus(bookingId);
-    }
+    // Không cần xử lý checkbox ở step 2 nữa (sẽ chuyển sang step 3)
+    
+    // Không cần kiểm tra deposit status ở step 2 nữa (sẽ chuyển sang step 3)
 });
 
 // ================= AUTH =================
@@ -133,6 +131,15 @@ async function loadRoomDetails() {
             calculatePrice();
         }
         
+        // Đảm bảo phần "Thông tin đặt cọc" được hiển thị nếu chưa có booking
+        const hasBooking = localStorage.getItem('current_booking_id');
+        if (!hasBooking) {
+            const depositSection = document.getElementById('deposit-section');
+            if (depositSection) {
+                depositSection.style.display = 'block';
+            }
+        }
+        
     } catch (err) {
         console.error('Lỗi tải thông tin phòng:', err);
         alert('Lỗi tải thông tin phòng!');
@@ -202,57 +209,46 @@ function calculatePrice() {
     const tax = basePrice * 0.08; // 8% VAT
     const total = basePrice + tax;
     
+    // Tính tiền cọc dự kiến = 30% tổng giá (có thuế)
+    const expectedDeposit = Math.round(total * 0.3);
+    
     // Hiển thị giá
     document.getElementById('original-price').textContent = formatCurrency(basePrice);
     document.getElementById('total-price').textContent = formatCurrency(total);
     document.getElementById('tax-amount').textContent = formatCurrency(tax);
+    
+    // Kiểm tra xem đã có booking chưa
+    const hasBooking = localStorage.getItem('current_booking_id');
+    
+    // Hiển thị tiền cọc dự kiến trong phần tóm tắt giá
+    const expectedDepositRow = document.getElementById('expected-deposit-row');
+    const expectedDepositEl = document.getElementById('expected-deposit-amount');
+    if (expectedDepositRow && expectedDepositEl) {
+        if (!hasBooking) {
+            // Chưa có booking: hiển thị tiền cọc dự kiến
+            expectedDepositEl.textContent = formatCurrency(expectedDeposit);
+            expectedDepositRow.style.display = 'flex';
+        } else {
+            // Đã có booking: ẩn tiền cọc dự kiến (sẽ hiển thị trong phần "Thông tin đặt cọc")
+            expectedDepositRow.style.display = 'none';
+        }
+    }
+    
+    // Không cần xử lý phần đặt cọc ở step 2 nữa (sẽ chuyển sang step 3)
     
     // Lưu giá vào bookingData
     bookingData.basePrice = basePrice;
     bookingData.tax = tax;
     bookingData.total = total;
     bookingData.nights = nights;
+    bookingData.expectedDeposit = expectedDeposit; // Lưu tiền cọc dự kiến
 }
 
 function formatCurrency(amount) {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
 }
 
-async function checkDepositStatus(bookingId) {
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:3000/api/bookings/my-bookings`, {
-            headers: {
-                'Authorization': token
-            }
-        });
-        
-        if (!res.ok) throw new Error('Không tải được thông tin booking');
-        
-        const bookings = await res.json();
-        const booking = bookings.find(b => b.BookingID == bookingId);
-        
-        if (booking && booking.DepositAmount && booking.DepositAmount > 0) {
-            const deposit = {
-                amount: booking.DepositAmount,
-                status: booking.DepositStatus || 'pending',
-                info: booking.DepositInfo ? (typeof booking.DepositInfo === 'string' ? JSON.parse(booking.DepositInfo) : booking.DepositInfo) : null
-            };
-            
-            displayDepositInfo(deposit);
-            document.getElementById('deposit-section').style.display = 'block';
-            document.getElementById('payment-notice-no-deposit').style.display = 'none';
-            document.getElementById('btn-complete-booking').style.display = 'none';
-            
-            if (deposit.status === 'confirmed') {
-                document.getElementById('deposit-status-confirmed').style.display = 'block';
-                document.getElementById('btn-confirm-deposit').style.display = 'none';
-            }
-        }
-    } catch (err) {
-        console.error('Lỗi kiểm tra trạng thái đặt cọc:', err);
-    }
-}
+// Hàm checkDepositStatus đã được chuyển sang booking-step3.js
 
 function displayRoomType() {
     // Hiển thị tên loại phòng nếu có
@@ -311,13 +307,19 @@ function completeBooking() {
             // Lưu bookingId vào localStorage
             localStorage.setItem('current_booking_id', data.bookingId);
             
-            // Nếu có thông tin đặt cọc, hiển thị phần đặt cọc
+            // Đảm bảo tất cả dữ liệu booking được lưu vào localStorage trước khi chuyển trang
+            Object.keys(bookingData).forEach(key => {
+                if (bookingData[key] !== null && bookingData[key] !== undefined) {
+                    localStorage.setItem(`booking_${key}`, bookingData[key]);
+                }
+            });
+            
+            // Lưu thông tin đặt cọc vào localStorage để dùng ở step 3
             if (data.deposit && data.deposit.amount > 0) {
-                displayDepositInfo(data.deposit);
-                // Ẩn nút "Hoàn tất đặt chỗ" và hiển thị phần đặt cọc
-                btn.style.display = 'none';
-                document.getElementById('deposit-section').style.display = 'block';
-                document.getElementById('payment-notice-no-deposit').style.display = 'none';
+                localStorage.setItem('booking_deposit', JSON.stringify(data.deposit));
+                console.log('Chuyển sang step 3 với deposit:', data.deposit);
+                // Chuyển sang step 3 (Thông tin đặt cọc)
+                window.location.href = 'booking-step3.html';
             } else {
                 // Không có đặt cọc, xóa dữ liệu và chuyển đến history
                 Object.keys(bookingData).forEach(key => {
@@ -337,78 +339,6 @@ function completeBooking() {
     });
 }
 
-function displayDepositInfo(deposit) {
-    // Hiển thị số tiền đặt cọc
-    document.getElementById('deposit-amount').textContent = formatCurrency(deposit.amount);
-    
-    // Hiển thị thông tin chuyển khoản
-    if (deposit.info) {
-        document.getElementById('deposit-account-number').textContent = deposit.info.accountNumber || 'N/A';
-        document.getElementById('deposit-bank-name').textContent = deposit.info.bankName || 'N/A';
-        document.getElementById('deposit-account-name').textContent = deposit.info.accountName || 'N/A';
-        document.getElementById('deposit-content').textContent = deposit.info.content || 'N/A';
-    }
-    
-    // Nếu đã xác nhận, hiển thị trạng thái
-    if (deposit.status === 'confirmed') {
-        document.getElementById('deposit-status-confirmed').style.display = 'block';
-        document.getElementById('btn-confirm-deposit').style.display = 'none';
-    }
-}
-
-function confirmDeposit() {
-    const bookingId = localStorage.getItem('current_booking_id');
-    
-    if (!bookingId) {
-        alert('Không tìm thấy thông tin đặt phòng!');
-        return;
-    }
-    
-    const btn = document.getElementById('btn-confirm-deposit');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
-    
-    const token = localStorage.getItem('token');
-    
-    // Gửi request xác nhận đặt cọc
-    fetch(`http://localhost:3000/api/bookings/${bookingId}/confirm-deposit`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            alert('❌ ' + data.error);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Tôi đã chuyển khoản xong';
-        } else {
-            // Hiển thị trạng thái đã xác nhận
-            document.getElementById('deposit-status-confirmed').style.display = 'block';
-            document.getElementById('btn-confirm-deposit').style.display = 'none';
-            
-            // Xóa dữ liệu booking trong localStorage
-            Object.keys(bookingData).forEach(key => {
-                localStorage.removeItem(`booking_${key}`);
-            });
-            localStorage.removeItem('current_booking_id');
-            
-            alert('✅ ' + data.message);
-            
-            // Chuyển đến history sau 2 giây
-            setTimeout(() => {
-                window.location.href = 'history.html';
-            }, 2000);
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('Lỗi kết nối Server!');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check-circle"></i> Tôi đã chuyển khoản xong';
-    });
-}
+// Các hàm đặt cọc đã được chuyển sang booking-step3.js
 
 

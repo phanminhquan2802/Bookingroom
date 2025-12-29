@@ -13,7 +13,7 @@
             <h3>Staff Dashboard</h3>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-item active" data-target="section-hotels">
+            <li class="menu-item active" data-target="section-hotels" onclick="switchSection('section-hotels')">
                 <a href="#"><i class="fas fa-hotel"></i> Khách sạn của tôi</a>
             </li>
         </ul>
@@ -45,6 +45,11 @@
                     </button>
                 </div>
                 <div class="section-filters">
+                    <div style="position: relative; flex: 1; min-width: 300px;">
+                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>
+                        <input type="text" id="booking-search" placeholder="Tìm kiếm theo ID, tên khách, email, số điện thoại..." 
+                               onkeyup="filterBookings()" style="padding-left: 35px;">
+                    </div>
                     <select id="booking-status-filter" onchange="loadBookings()">
                         <option value="all">Tất cả trạng thái</option>
                         <option value="Pending">Chờ duyệt</option>

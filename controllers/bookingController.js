@@ -97,10 +97,10 @@ const validateGuestsAndRooms = (adults, children, rooms) => {
         return { valid: false, error: "Số phòng không được vượt quá 10!" };
     }
     
-    // Tổng số người không được vượt quá số phòng * 4 (giả sử mỗi phòng tối đa 4 người)
-    const totalGuests = adultsNum + childrenNum;
+    // Tính tổng số người: 2 trẻ em = 1 người lớn
+    const totalGuests = adultsNum + Math.ceil(childrenNum / 2);
     if (totalGuests > roomsNum * 4) {
-        return { valid: false, error: `Tổng số người (${totalGuests}) không được vượt quá ${roomsNum * 4} người cho ${roomsNum} phòng!` };
+        return { valid: false, error: `Tổng số người (${adultsNum} người lớn + ${childrenNum} trẻ em = ${totalGuests} người) không được vượt quá ${roomsNum * 4} người cho ${roomsNum} phòng!` };
     }
     
     return { valid: true, adults: adultsNum, children: childrenNum, rooms: roomsNum };
@@ -230,7 +230,9 @@ exports.createBooking = (req, res) => {
     }
     
     function proceedWithBooking() {
-        // 5. Tính số tiền đặt cọc (30% tổng giá trị)
+        // 5. Tính số tiền đặt cọc = 30% tổng giá trị phòng đặt
+        // Tổng giá trị = (Giá mỗi đêm) × (Số đêm) × (Số phòng)
+        // Số tiền cọc = Tổng giá trị × 30%
         // Lấy giá từ RoomType hoặc Room
         const calculateDeposit = (callback) => {
             if (roomTypeId) {
@@ -246,8 +248,25 @@ exports.createBooking = (req, res) => {
                         const checkInDate = new Date(checkIn);
                         const checkOutDate = new Date(checkOut);
                         const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-                        const totalPrice = pricePerNight * nights * guestsValidation.rooms;
-                        const depositAmount = Math.round(totalPrice * 0.3); // 30% đặt cọc
+                        // Tính giá gốc (chưa thuế)
+                        const basePrice = pricePerNight * nights * guestsValidation.rooms;
+                        // Tính thuế VAT 8%
+                        const tax = basePrice * 0.08;
+                        // Tổng giá trị = giá gốc + thuế
+                        const totalPrice = basePrice + tax;
+                        // Số tiền cọc = 30% tổng giá trị (có thuế)
+                        const depositAmount = Math.round(totalPrice * 0.3);
+                        
+                        // Log để debug
+                        console.log('Tính tiền cọc (RoomType):', {
+                            pricePerNight,
+                            nights,
+                            rooms: guestsValidation.rooms,
+                            basePrice,
+                            tax,
+                            totalPrice,
+                            depositAmount
+                        });
                         
                         // Thông tin chuyển khoản (có thể lấy từ config hoặc hardcode)
                         const depositInfo = JSON.stringify({
@@ -273,8 +292,25 @@ exports.createBooking = (req, res) => {
                         const checkInDate = new Date(checkIn);
                         const checkOutDate = new Date(checkOut);
                         const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-                        const totalPrice = pricePerNight * nights * guestsValidation.rooms;
-                        const depositAmount = Math.round(totalPrice * 0.3); // 30% đặt cọc
+                        // Tính giá gốc (chưa thuế)
+                        const basePrice = pricePerNight * nights * guestsValidation.rooms;
+                        // Tính thuế VAT 8%
+                        const tax = basePrice * 0.08;
+                        // Tổng giá trị = giá gốc + thuế
+                        const totalPrice = basePrice + tax;
+                        // Số tiền cọc = 30% tổng giá trị (có thuế)
+                        const depositAmount = Math.round(totalPrice * 0.3);
+                        
+                        // Log để debug
+                        console.log('Tính tiền cọc (Room):', {
+                            pricePerNight,
+                            nights,
+                            rooms: guestsValidation.rooms,
+                            basePrice,
+                            tax,
+                            totalPrice,
+                            depositAmount
+                        });
                         
                         // Thông tin chuyển khoản
                         const depositInfo = JSON.stringify({

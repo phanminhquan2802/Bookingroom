@@ -12,7 +12,8 @@ exports.getRoomTypesByHotel = (req, res) => {
     const adultsNum = adults ? parseInt(adults) : null;
     const childrenNum = children ? parseInt(children) : null;
     const roomsNum = rooms ? parseInt(rooms) : null;
-    const totalGuests = (adultsNum !== null && childrenNum !== null) ? (adultsNum + childrenNum) : null;
+    // Tính tổng số người: 2 trẻ em = 1 người lớn
+    const totalGuests = (adultsNum !== null && childrenNum !== null) ? (adultsNum + Math.ceil(childrenNum / 2)) : null;
     
     // QUAN TRỌNG: Chỉ lấy RoomTypes của hotel này (RT.HotelID = ?)
     // Tính số phòng thực sự available trong khoảng thời gian tìm kiếm (nếu có checkIn/checkOut)
@@ -22,21 +23,15 @@ exports.getRoomTypesByHotel = (req, res) => {
     let sql = `
         SELECT RT.*, 
                COUNT(DISTINCT RA.AmenityID) as AmenityCount,
-               IFNULL(RT.AvailableRooms, 10) as AvailableRooms`;
+               IFNULL(RT.AvailableRooms, 0) as AvailableRooms`;
     
     // Nếu có checkIn và checkOut, tính số phòng thực sự available trong khoảng thời gian đó
-    // QUAN TRỌNG: Tính từ tổng số phòng ban đầu (AvailableRooms + số phòng đã đặt) 
-    // trừ đi số phòng đã đặt trong khoảng thời gian tìm kiếm
+    // QUAN TRỌNG: AvailableRooms đã là số phòng còn trống (đã trừ đi các booking đã confirmed deposit)
+    // Chỉ cần trừ thêm số phòng đã đặt trong khoảng thời gian tìm kiếm (overlapping bookings)
     // Logic overlap: 2 khoảng thời gian overlap nếu: bookingStart < searchEnd AND bookingEnd > searchStart
     if (checkIn && checkOut) {
         sql += `,
-               ((IFNULL(RT.AvailableRooms, 10) + COALESCE(
-                   (SELECT SUM(B.Rooms) 
-                    FROM Bookings B 
-                    WHERE B.RoomTypeID = RT.RoomTypeID 
-                    AND B.Status IN ('Pending', 'Confirmed', 'CheckedIn')
-                   ), 0
-               )) - COALESCE(
+               (IFNULL(RT.AvailableRooms, 0) - COALESCE(
                    (SELECT SUM(B.Rooms) 
                     FROM Bookings B 
                     WHERE B.RoomTypeID = RT.RoomTypeID 
@@ -45,14 +40,14 @@ exports.getRoomTypesByHotel = (req, res) => {
                     AND B.CheckOutDate > ?
                    ), 0
                )) as ActualAvailableRooms`;
-        // Thêm params cho subquery: searchCheckOut, searchCheckIn
         // Logic: 
-        // 1. Tính tổng số phòng = AvailableRooms (hiện tại) + số phòng đã đặt (tất cả booking active)
-        // 2. Trừ đi số phòng đã đặt trong khoảng thời gian tìm kiếm
-        // Ví dụ: AvailableRooms = 3, có booking 29-30 (1 phòng)
-        //   - Tổng = 3 + 1 = 4
-        //   - Tìm kiếm 2-3: không có booking nào trong 2-3 → ActualAvailableRooms = 4 - 0 = 4 ✓
-        //   - Tìm kiếm 28-30: có booking 29-30 trong 28-30 → ActualAvailableRooms = 4 - 1 = 3 ✓
+        // 1. AvailableRooms = số phòng còn trống hiện tại (đã trừ đi các booking đã confirmed deposit)
+        // 2. Trừ đi số phòng đã đặt trong khoảng thời gian tìm kiếm (overlapping bookings)
+        // Ví dụ: AvailableRooms = 4, có booking 29-30 (1 phòng) đã confirmed deposit
+        //   - AvailableRooms = 4 - 1 = 3 (đã được cập nhật khi booking confirmed)
+        //   - Tìm kiếm 2-3: không có booking nào trong 2-3 → ActualAvailableRooms = 3 - 0 = 3 ✓
+        //   - Tìm kiếm 28-30: có booking 29-30 trong 28-30 → ActualAvailableRooms = 3 - 1 = 2 ✓
+        //   - Tìm kiếm 31-1: không có booking nào trong 31-1 → ActualAvailableRooms = 3 - 0 = 3 ✓
         params.push(checkOut, checkIn);
     }
     
@@ -73,10 +68,10 @@ exports.getRoomTypesByHotel = (req, res) => {
     // Thêm điều kiện WHERE cho AvailableRooms (nếu không có checkIn/checkOut)
     if (!checkIn || !checkOut) {
         if (roomsNum !== null && roomsNum > 0 && totalGuests !== null && totalGuests > 0) {
-            sql += ` AND IFNULL(RT.AvailableRooms, 10) >= ?`;
+            sql += ` AND IFNULL(RT.AvailableRooms, 0) >= ?`;
             params.push(roomsNum);
         } else {
-            sql += ` AND IFNULL(RT.AvailableRooms, 10) > 0`;
+            sql += ` AND IFNULL(RT.AvailableRooms, 0) > 0`;
         }
     }
     
@@ -213,7 +208,8 @@ exports.getAvailableRoomTypes = (req, res) => {
     const adultsNum = parseInt(adults) || 2;
     const childrenNum = parseInt(children) || 0;
     const roomsNum = parseInt(rooms) || 1;
-    const totalGuests = adultsNum + childrenNum;
+    // Tính tổng số người: 2 trẻ em = 1 người lớn
+    const totalGuests = adultsNum + Math.ceil(childrenNum / 2);
     
     // Filter RoomType theo:
     // 1. AvailableRooms >= số phòng cần đặt
@@ -222,12 +218,12 @@ exports.getAvailableRoomTypes = (req, res) => {
         SELECT RT.*,
                R.RoomName as HotelName,
                COUNT(DISTINCT RA.AmenityID) as AmenityCount,
-               IFNULL(RT.AvailableRooms, 10) as AvailableRooms
+               IFNULL(RT.AvailableRooms, 0) as AvailableRooms
         FROM RoomTypes RT
         JOIN Rooms R ON RT.HotelID = R.RoomID
         LEFT JOIN RoomAmenities RA ON RT.RoomTypeID = RA.RoomTypeID
         WHERE RT.IsDeleted = 0
-        AND IFNULL(RT.AvailableRooms, 10) >= ?
+        AND IFNULL(RT.AvailableRooms, 0) >= ?
         AND (IFNULL(RT.MaxGuests, 2) * ?) >= ?
     `;
     
@@ -253,7 +249,7 @@ exports.getAvailableRoomTypes = (req, res) => {
 exports.getAllRoomTypesAdmin = (req, res) => {
     const sql = `
         SELECT RT.*, R.RoomName as HotelName,
-               IFNULL(RT.AvailableRooms, 10) as AvailableRooms
+               IFNULL(RT.AvailableRooms, 0) as AvailableRooms
         FROM RoomTypes RT
         JOIN Rooms R ON RT.HotelID = R.RoomID
         WHERE RT.IsDeleted = 0

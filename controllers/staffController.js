@@ -73,7 +73,10 @@ exports.getBookingsByHotel = (req, res) => {
                    A.Username, A.Email,
                    R.RoomName, R.Address,
                    RT.RoomTypeName, RT.Price as RoomTypePrice,
-                   C.CategoryName
+                   C.CategoryName,
+                   IFNULL(B.CheckInConfirmed, 0) AS CheckInConfirmed,
+                   IFNULL(B.CheckOutConfirmed, 0) AS CheckOutConfirmed,
+                   B.RoomInspection
             FROM Bookings B
             JOIN Accounts A ON B.AccountID = A.AccountID
             JOIN Rooms R ON B.RoomID = R.RoomID
@@ -103,11 +106,28 @@ exports.getBookingsByHotel = (req, res) => {
         
         sql += ` ORDER BY B.CheckInDate DESC, B.BookingID DESC`;
         
+        // Debug: Log query và params
+        console.log('getBookingsByHotel - SQL:', sql);
+        console.log('getBookingsByHotel - Params:', params);
+        console.log('getBookingsByHotel - Filters:', { status, checkIn, checkOut });
+        
         db.query(sql, params, (err, results) => {
             if (err) {
                 console.error('Lỗi lấy danh sách booking:', err);
                 return res.status(500).json({ error: "Lỗi lấy danh sách đặt phòng" });
             }
+            
+            // Debug: Log kết quả
+            console.log(`getBookingsByHotel - Found ${results.length} bookings for hotel ${hotelId}`);
+            if (results.length > 0) {
+                console.log('Sample booking:', {
+                    BookingID: results[0].BookingID,
+                    Status: results[0].Status,
+                    CheckInDate: results[0].CheckInDate,
+                    CheckOutDate: results[0].CheckOutDate
+                });
+            }
+            
             res.json(results);
         });
     });

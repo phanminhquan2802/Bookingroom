@@ -92,14 +92,30 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ================= 1. MODULE TÀI KHOẢN ================= */
+let allAccounts = []; // Lưu danh sách accounts để filter
+
 async function loadAccounts() {
     try {
         const res = await fetchWithAuth("/users");
-        const users = await res.json();
+        allAccounts = await res.json();
+        renderAccounts(allAccounts);
+    } catch (err) { 
+        console.error(err);
         const tbody = document.getElementById("account-table-body");
-        tbody.innerHTML = "";
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#dc3545;">Lỗi tải dữ liệu!</td></tr>';
+    }
+}
 
-        users.forEach((user, index) => {
+function renderAccounts(accounts) {
+    const tbody = document.getElementById("account-table-body");
+    tbody.innerHTML = "";
+
+    if (!accounts || accounts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Chưa có tài khoản nào</td></tr>';
+        return;
+    }
+
+    accounts.forEach((user, index) => {
             // Hiển thị ID theo thứ tự (1, 2, 3, 4...)
             const displayId = index + 1;
             
@@ -143,8 +159,27 @@ async function loadAccounts() {
                         ${deleteButton}
                     </td>
                 </tr>`;
-        });
-    } catch (err) { console.error(err); }
+    });
+}
+
+// Tìm kiếm tài khoản
+function filterAccounts() {
+    const searchTerm = document.getElementById('account-search')?.value.toLowerCase() || '';
+    
+    if (!searchTerm) {
+        renderAccounts(allAccounts);
+        return;
+    }
+    
+    const filteredAccounts = allAccounts.filter(user => {
+        const username = (user.Username || '').toLowerCase();
+        const email = (user.Email || '').toLowerCase();
+        
+        return username.includes(searchTerm) ||
+               email.includes(searchTerm);
+    });
+    
+    renderAccounts(filteredAccounts);
 }
 
 // Mở Modal Thêm User
@@ -500,7 +535,7 @@ function renderRoomTypes(roomTypes) {
 
         // Xử lý area để truyền vào hàm edit
         const areaValue = rt.Area ? rt.Area : '';
-        const availableRooms = rt.AvailableRooms !== undefined && rt.AvailableRooms !== null ? rt.AvailableRooms : 10;
+        const availableRooms = rt.AvailableRooms !== undefined && rt.AvailableRooms !== null ? rt.AvailableRooms : 0;
         
         tbody.innerHTML += `
             <tr>
@@ -572,7 +607,7 @@ function openEditRoomType(id, hotelId, name, price, area, maxGuests, bedType, be
     document.getElementById("roomtype-bedcount").value = bedCount || 1;
     document.getElementById("roomtype-image").value = img || '';
     document.getElementById("roomtype-description").value = desc || '';
-    document.getElementById("roomtype-availablerooms").value = availableRooms !== undefined ? availableRooms : 10;
+    document.getElementById("roomtype-availablerooms").value = availableRooms !== undefined ? availableRooms : 0;
 
     document.querySelector("#modal-roomtype h3").innerText = "Cập nhật Loại phòng";
     document.getElementById("modal-roomtype").style.display = "flex";
@@ -597,7 +632,7 @@ document.getElementById("roomtype-form").onsubmit = async (e) => {
         bedCount: parseInt(document.getElementById("roomtype-bedcount").value) || 1,
         imageURL: document.getElementById("roomtype-image").value || null,
         description: document.getElementById("roomtype-description").value || null,
-        availableRooms: parseInt(document.getElementById("roomtype-availablerooms").value) || 10
+        availableRooms: parseInt(document.getElementById("roomtype-availablerooms").value) || 0
     };
     
     // Validate
@@ -770,7 +805,7 @@ function renderBookings(bookings) {
                         ${bk.Status === 'CheckedIn' || bk.Status === 'CheckedOut' ? `
                             <br>
                             ${bk.CheckInConfirmed ? 
-                                '<small style="color:#28a745; display:inline-block; margin-top:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in</small>' : 
+                                '<small style="color:#28a745; display:inline-block; margin-top:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in + Thanh toán</small>' : 
                                 '<small style="color:#ffc107; display:inline-block; margin-top:3px;"><i class="fas fa-clock"></i> Chưa xác nhận Check-in</small>'
                             }
                         ` : ''}
@@ -978,7 +1013,7 @@ async function viewBookingDetail(bookingId) {
                 ${booking.CheckInConfirmed || booking.CheckOutConfirmed || booking.RoomInspection ? `
                 <div style="background:#e7f3ff; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #007bff;">
                     <h4 style="margin-top:0; color:#003580;"><i class="fas fa-user-tie"></i> Trạng thái Xác nhận của Nhân viên</h4>
-                    ${booking.CheckInConfirmed ? `<p><strong>Check-in:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span></p>` : '<p><strong>Check-in:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
+                    ${booking.CheckInConfirmed ? `<p><strong>Check-in:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in + thanh toán</span></p>` : '<p><strong>Check-in:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
                     ${booking.CheckOutConfirmed ? `<p><strong>Check-out:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span></p>` : '<p><strong>Check-out:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
                     ${booking.RoomInspection ? `<p><strong>Kiểm tra phòng:</strong><br><span style="background:white; padding:10px; border-radius:4px; display:inline-block; margin-top:5px; border:1px solid #ddd;">${booking.RoomInspection}</span></p>` : ''}
                 </div>
@@ -1032,7 +1067,8 @@ let allHotelsForAssign = [];
 
 async function loadStaff() {
     try {
-        const res = await fetchWithAuth('/users/staff');
+        // Thêm timestamp để tránh cache
+        const res = await fetchWithAuth(`/users/staff?t=${new Date().getTime()}`);
         if (!res.ok) throw new Error('Lỗi tải danh sách nhân viên');
         allStaff = await res.json();
         renderStaff(allStaff);
@@ -1052,18 +1088,33 @@ function renderStaff(staffList) {
     
     tbody.innerHTML = staffList.map((staff, index) => {
         const displayId = index + 1; // ID hiển thị theo thứ tự
-        const hotels = staff.AssignedHotels ? staff.AssignedHotels.split('|').map(h => {
-            const [id, name] = h.split(':');
-            return name || 'N/A';
-        }).join(', ') : 'Chưa phân công';
+        
+        // Parse danh sách khách sạn được phân công
+        let hotels = 'Chưa phân công';
+        if (staff.AssignedHotels && staff.AssignedHotels.trim() !== '') {
+            try {
+                const hotelList = staff.AssignedHotels.split('|')
+                    .filter(h => h && h.trim() !== '')
+                    .map(h => {
+                        const parts = h.split(':');
+                        return parts.length >= 2 ? parts[1] : parts[0];
+                    })
+                    .filter(name => name && name.trim() !== '');
+                
+                hotels = hotelList.length > 0 ? hotelList.join(', ') : 'Chưa phân công';
+            } catch (e) {
+                console.error('Lỗi parse AssignedHotels:', e, staff.AssignedHotels);
+                hotels = 'Chưa phân công';
+            }
+        }
         
         return `
             <tr>
                 <td>${displayId}</td>
-                <td>${staff.Username}</td>
-                <td>${staff.Email}</td>
-                <td>${hotels || 'Chưa phân công'}</td>
-                <td>${new Date(staff.CreatedAt).toLocaleDateString('vi-VN')}</td>
+                <td>${staff.Username || 'N/A'}</td>
+                <td>${staff.Email || 'N/A'}</td>
+                <td>${hotels}</td>
+                <td>${staff.CreatedAt ? new Date(staff.CreatedAt).toLocaleDateString('vi-VN') : 'N/A'}</td>
                 <td>
                     <button onclick="openAssignHotelModal(${staff.AccountID})" class="btn btn-sm btn-primary">
                         <i class="fas fa-hotel"></i> Phân công
@@ -1072,6 +1123,31 @@ function renderStaff(staffList) {
             </tr>
         `;
     }).join('');
+}
+
+// Tìm kiếm nhân viên
+function filterStaff() {
+    const searchTerm = document.getElementById('staff-search')?.value.toLowerCase() || '';
+    
+    if (!searchTerm) {
+        renderStaff(allStaff);
+        return;
+    }
+    
+    const filteredStaff = allStaff.filter(staff => {
+        const username = (staff.Username || '').toLowerCase();
+        const email = (staff.Email || '').toLowerCase();
+        const hotels = staff.AssignedHotels ? staff.AssignedHotels.split('|').map(h => {
+            const [id, name] = h.split(':');
+            return (name || '').toLowerCase();
+        }).join(' ') : '';
+        
+        return username.includes(searchTerm) ||
+               email.includes(searchTerm) ||
+               hotels.includes(searchTerm);
+    });
+    
+    renderStaff(filteredStaff);
 }
 
 // Thêm nhân viên
@@ -1099,7 +1175,11 @@ document.getElementById('staff-form')?.addEventListener('submit', async (e) => {
         
         alert('Tạo nhân viên thành công!');
         document.getElementById('modal-staff').style.display = 'none';
-        loadStaff();
+        document.getElementById('staff-form').reset();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadStaff();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
@@ -1145,7 +1225,11 @@ document.getElementById('assign-hotel-form')?.addEventListener('submit', async (
         
         alert('Phân công khách sạn thành công!');
         document.getElementById('modal-assign-hotel').style.display = 'none';
-        loadStaff();
+        document.getElementById('assign-hotel-form').reset();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadStaff();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }

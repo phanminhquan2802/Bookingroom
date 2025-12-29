@@ -36,7 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load danh sách khách sạn được phân công
 async function loadHotels() {
     try {
-        const res = await fetchWithAuth('/hotels');
+        // Thêm timestamp để tránh cache
+        const res = await fetchWithAuth(`/hotels?t=${new Date().getTime()}`);
         if (!res.ok) throw new Error('Lỗi tải danh sách khách sạn');
         const hotels = await res.json();
         renderHotels(hotels);
@@ -76,6 +77,28 @@ function viewHotelBookings(hotelId, hotelName) {
     loadBookings();
 }
 
+// Chuyển đổi giữa các section
+function switchSection(sectionId) {
+    // Ẩn tất cả sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active-section');
+    });
+    
+    // Hiển thị section được chọn
+    document.getElementById(sectionId).classList.add('active-section');
+    
+    // Cập nhật menu active
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelector(`[data-target="${sectionId}"]`).classList.add('active');
+    
+    // Cập nhật title
+    if (sectionId === 'section-hotels') {
+        document.getElementById('section-title').textContent = 'Khách sạn của tôi';
+    }
+}
+
 // Quay lại danh sách khách sạn
 function backToHotels() {
     currentHotelId = null;
@@ -93,7 +116,8 @@ async function loadBookings() {
         const checkIn = document.getElementById('checkin-filter').value;
         const checkOut = document.getElementById('checkout-filter').value;
         
-        let url = `/hotels/${currentHotelId}/bookings?`;
+        // Thêm timestamp để tránh cache
+        let url = `/hotels/${currentHotelId}/bookings?t=${new Date().getTime()}&`;
         if (status !== 'all') url += `status=${status}&`;
         if (checkIn) url += `checkIn=${checkIn}&`;
         if (checkOut) url += `checkOut=${checkOut}&`;
@@ -101,7 +125,26 @@ async function loadBookings() {
         const res = await fetchWithAuth(url);
         if (!res.ok) throw new Error('Lỗi tải danh sách đặt phòng');
         allBookings = await res.json();
+        
+        // Debug: Log dữ liệu nhận được
+        console.log('loadBookings - Received bookings:', allBookings.length);
+        console.log('loadBookings - Filters:', { status, checkIn, checkOut });
+        if (allBookings.length > 0) {
+            console.log('loadBookings - Sample booking:', {
+                BookingID: allBookings[0].BookingID,
+                Status: allBookings[0].Status,
+                CheckInDate: allBookings[0].CheckInDate,
+                CheckOutDate: allBookings[0].CheckOutDate
+            });
+        }
+        
         renderBookings(allBookings);
+        
+        // Áp dụng filter tìm kiếm nếu có
+        const searchTerm = document.getElementById('booking-search')?.value;
+        if (searchTerm) {
+            filterBookings();
+        }
     } catch (err) {
         console.error(err);
         document.getElementById('bookings-table-body').innerHTML = 
@@ -148,7 +191,7 @@ function renderBookings(bookings) {
             } else {
                 actionButtons = `
                     <span class="badge badge-success" style="margin-bottom:5px; display:inline-block;">
-                        <i class="fas fa-check"></i> Đã xác nhận Check-in
+                        <i class="fas fa-check"></i> Đã xác nhận Check-in + thanh toán
                     </span>
                     <br>
                 `;
@@ -223,7 +266,10 @@ async function checkInBooking(bookingId) {
         }
         
         alert('Check-in thành công!');
-        loadBookings();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadBookings();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
@@ -244,7 +290,10 @@ async function checkOutBooking(bookingId) {
         }
         
         alert('Check-out thành công!');
-        loadBookings();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadBookings();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
@@ -297,7 +346,7 @@ async function viewBookingDetail(bookingId) {
                 <p><strong>Thuế (8%):</strong> ${new Intl.NumberFormat('vi-VN').format(tax)} VNĐ</p>
                 <p><strong><strong>Tổng cộng:</strong> ${new Intl.NumberFormat('vi-VN').format(total)} VNĐ</p>
                 
-                ${booking.CheckInConfirmed ? `<h4 style="margin-top:20px;">Trạng thái Check-in</h4><p><span class="status-badge" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in</span></p>` : ''}
+                ${booking.CheckInConfirmed ? `<h4 style="margin-top:20px;">Trạng thái Check-in</h4><p><span class="status-badge" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in + thanh toán</span></p>` : ''}
                 ${booking.CheckOutConfirmed ? `<h4 style="margin-top:20px;">Trạng thái Check-out</h4><p><span class="status-badge" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-out</span></p>` : ''}
                 ${booking.RoomInspection ? `<h4 style="margin-top:20px;">Kiểm tra Phòng</h4><p style="background:#f8f9fa; padding:10px; border-radius:5px; border-left:3px solid #007bff;">${booking.RoomInspection}</p>` : ''}
                 
@@ -326,7 +375,10 @@ async function confirmCheckIn(bookingId) {
         }
         
         alert('Xác nhận check-in thành công!');
-        loadBookings();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadBookings();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
@@ -369,7 +421,10 @@ document.getElementById('confirm-checkout-form')?.addEventListener('submit', asy
         
         alert('Xác nhận check-out và kiểm tra phòng thành công!');
         closeConfirmCheckOutModal();
-        loadBookings();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadBookings();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
@@ -399,10 +454,37 @@ async function revertBookingStatus(bookingId, newStatus) {
         }
         
         alert('Quay lại trạng thái thành công!');
-        loadBookings();
+        // Đợi một chút để đảm bảo dữ liệu đã được lưu vào database
+        setTimeout(() => {
+            loadBookings();
+        }, 300);
     } catch (err) {
         alert(err.message);
     }
+}
+
+// Tìm kiếm booking
+function filterBookings() {
+    const searchTerm = document.getElementById('booking-search')?.value.toLowerCase() || '';
+    
+    if (!searchTerm) {
+        renderBookings(allBookings);
+        return;
+    }
+    
+    const filteredBookings = allBookings.filter(bk => {
+        const bookingId = (bk.BookingID || '').toString();
+        const guestName = ((bk.Username || bk.GuestName) || '').toLowerCase();
+        const guestEmail = ((bk.Email || bk.GuestEmail) || '').toLowerCase();
+        const guestPhone = (bk.GuestPhone || '').toLowerCase();
+        
+        return bookingId.includes(searchTerm) ||
+               guestName.includes(searchTerm) ||
+               guestEmail.includes(searchTerm) ||
+               guestPhone.includes(searchTerm);
+    });
+    
+    renderBookings(filteredBookings);
 }
 
 // Đóng modal

@@ -501,7 +501,8 @@ function changeGuests(type, delta) {
 
 // Validation: Đảm bảo số phòng phù hợp với số người
 function validateGuestsAndRooms() {
-    const totalGuests = guestsData.adults + guestsData.children;
+    // Tính tổng số người: 2 trẻ em = 1 người lớn
+    const totalGuests = guestsData.adults + Math.ceil(guestsData.children / 2);
     const maxGuestsPerRoom = 4; // Giả sử mỗi phòng tối đa 4 người
     
     // Nếu tổng số người vượt quá số phòng * maxGuestsPerRoom, tự động tăng số phòng
@@ -517,7 +518,8 @@ function validateGuestsAndRooms() {
 
 // Cập nhật trạng thái nút +/- 
 function updateCounterButtons() {
-    const totalGuests = guestsData.adults + guestsData.children;
+    // Tính tổng số người: 2 trẻ em = 1 người lớn
+    const totalGuests = guestsData.adults + Math.ceil(guestsData.children / 2);
     const maxGuestsPerRoom = 4;
     const minRequiredRooms = Math.ceil(totalGuests / maxGuestsPerRoom);
     

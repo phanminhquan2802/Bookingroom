@@ -364,6 +364,9 @@ async function loadRoomTypes() {
         let url = `http://localhost:3000/api/hotels/${roomId}/roomtypes`;
         const queryParams = [];
         
+        // Thêm timestamp để tránh cache
+        queryParams.push(`t=${new Date().getTime()}`);
+        
         if (checkIn && checkOut) {
             queryParams.push(`checkIn=${checkIn}`, `checkOut=${checkOut}`);
         }
@@ -461,9 +464,22 @@ function renderRoomTypes(roomTypes) {
         const bedInfo = roomType.BedType || '';
         const maxGuests = roomType.MaxGuests || 2;
         // Ưu tiên dùng ActualAvailableRooms nếu có (khi có checkIn/checkOut), nếu không dùng AvailableRooms
-        const availableRooms = roomType.ActualAvailableRooms !== undefined && roomType.ActualAvailableRooms !== null 
-            ? roomType.ActualAvailableRooms 
-            : (roomType.AvailableRooms !== undefined && roomType.AvailableRooms !== null ? roomType.AvailableRooms : 10);
+        // Debug: Log để kiểm tra giá trị
+        const checkIn = document.getElementById('checkin-detail').value;
+        const checkOut = document.getElementById('checkout-detail').value;
+        const hasDates = checkIn && checkOut;
+        
+        let availableRooms = 0;
+        if (hasDates && roomType.ActualAvailableRooms !== undefined && roomType.ActualAvailableRooms !== null) {
+            availableRooms = parseInt(roomType.ActualAvailableRooms) || 0;
+            console.log(`RoomType ${roomType.RoomTypeID}: Using ActualAvailableRooms = ${availableRooms} (checkIn: ${checkIn}, checkOut: ${checkOut})`);
+        } else if (roomType.AvailableRooms !== undefined && roomType.AvailableRooms !== null) {
+            availableRooms = parseInt(roomType.AvailableRooms) || 0;
+            console.log(`RoomType ${roomType.RoomTypeID}: Using AvailableRooms = ${availableRooms} (no dates or ActualAvailableRooms not available)`);
+        } else {
+            availableRooms = 0;
+            console.log(`RoomType ${roomType.RoomTypeID}: No available rooms data, defaulting to 0`);
+        }
         
         // Nhóm tiện nghi theo category
         const amenitiesByCategory = {};
