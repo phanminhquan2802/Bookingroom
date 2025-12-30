@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const emailService = require('../services/emailService');
 
 // Helper function: Validate dates
 const validateDates = (checkIn, checkOut) => {
@@ -469,10 +470,17 @@ exports.confirmDeposit = (req, res) => {
     const bookingId = req.params.id;
     const userId = req.user.id;
     
-    // 1. Lấy thông tin booking và kiểm tra quyền sở hữu
+    // 1. Lấy thông tin booking đầy đủ và kiểm tra quyền sở hữu
     db.query(
-        `SELECT Status, RoomTypeID, Rooms, AccountID, DepositStatus, DepositAmount 
-         FROM Bookings WHERE BookingID = ?`,
+        `SELECT B.*, 
+                A.Username, A.Email,
+                R.RoomName, R.Address,
+                RT.RoomTypeName, RT.Price as RoomTypePrice
+         FROM Bookings B
+         JOIN Accounts A ON B.AccountID = A.AccountID
+         JOIN Rooms R ON B.RoomID = R.RoomID
+         LEFT JOIN RoomTypes RT ON B.RoomTypeID = RT.RoomTypeID
+         WHERE B.BookingID = ?`,
         [bookingId],
         (err, results) => {
             if (err) {
@@ -524,15 +532,49 @@ exports.confirmDeposit = (req, res) => {
                                 // Không rollback vì đã cập nhật status rồi
                             }
                             
+                            // 7. Gửi email hóa đơn (không chặn response nếu lỗi)
+                            if (typeof emailService !== 'undefined' && emailService.sendInvoiceEmail) {
+                                emailService.sendInvoiceEmail(booking)
+                                    .then(emailResult => {
+                                        if (emailResult.success) {
+                                            console.log('✅ Email hóa đơn đã được gửi thành công');
+                                        } else {
+                                            console.error('❌ Lỗi gửi email hóa đơn:', emailResult.error);
+                                        }
+                                    })
+                                    .catch(emailError => {
+                                        console.error('❌ Lỗi gửi email hóa đơn:', emailError);
+                                    });
+                            } else {
+                                console.error('❌ emailService không được định nghĩa hoặc không có hàm sendInvoiceEmail');
+                            }
+                            
                             res.json({ 
-                                message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ.",
+                                message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ. Hóa đơn đã được gửi về email của bạn.",
                                 bookingId: bookingId,
                                 depositStatus: 'confirmed'
                             });
                         });
                     } else {
+                        // 7. Gửi email hóa đơn (không chặn response nếu lỗi)
+                        if (typeof emailService !== 'undefined' && emailService.sendInvoiceEmail) {
+                            emailService.sendInvoiceEmail(booking)
+                                .then(emailResult => {
+                                    if (emailResult.success) {
+                                        console.log('✅ Email hóa đơn đã được gửi thành công');
+                                    } else {
+                                        console.error('❌ Lỗi gửi email hóa đơn:', emailResult.error);
+                                    }
+                                })
+                                .catch(emailError => {
+                                    console.error('❌ Lỗi gửi email hóa đơn:', emailError);
+                                });
+                        } else {
+                            console.error('❌ emailService không được định nghĩa hoặc không có hàm sendInvoiceEmail');
+                        }
+                        
                         res.json({ 
-                            message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ.",
+                            message: "Xác nhận đặt cọc thành công! Phòng của bạn đã được giữ. Hóa đơn đã được gửi về email của bạn.",
                             bookingId: bookingId,
                             depositStatus: 'confirmed'
                         });
@@ -688,8 +730,11 @@ exports.getAllBookings = (req, res) => {
                IFNULL(B.Rooms, 1) AS Rooms,
                B.GuestName, B.GuestEmail, B.GuestPhone, B.SpecialRequests, B.ArrivalTime,
                B.CancelReason,
-               A.Username, A.Email, R.RoomName, R.Price, R.ImageURL,
-               RT.RoomTypeName, RT.RoomTypeID, RT.Price AS RoomTypePrice,
+               A.Username, A.Email, 
+               R.RoomID, R.RoomName, R.Address, R.Price, R.ImageURL,
+               C.CategoryName,
+               RT.RoomTypeID, RT.RoomTypeName, RT.Price AS RoomTypePrice,
+               RT.Area, RT.MaxGuests, RT.BedType, RT.BedCount, RT.AvailableRooms,
                IFNULL(B.CheckInConfirmed, 0) AS CheckInConfirmed,
                IFNULL(B.CheckOutConfirmed, 0) AS CheckOutConfirmed,
                B.RoomInspection,
@@ -699,6 +744,7 @@ exports.getAllBookings = (req, res) => {
         FROM Bookings B
         JOIN Accounts A ON B.AccountID = A.AccountID
         JOIN Rooms R ON B.RoomID = R.RoomID
+        LEFT JOIN Categories C ON R.CategoryID = C.CategoryID
         LEFT JOIN RoomTypes RT ON B.RoomTypeID = RT.RoomTypeID
         ORDER BY B.BookingDate DESC
     `;

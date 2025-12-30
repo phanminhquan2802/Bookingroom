@@ -975,11 +975,30 @@ async function viewBookingDetail(bookingId) {
                 </div>
                 
                 <div style="background:#f8f9fa; padding:15px; border-radius:6px; margin-bottom:20px;">
-                    <h4 style="margin-top:0; color:#003580;">Thông tin phòng</h4>
-                    <p><strong>Tên phòng:</strong> ${booking.RoomName}</p>
-                    ${booking.RoomTypeName ? `<p><strong>Loại phòng:</strong> ${booking.RoomTypeName}</p>` : ''}
-                    <p><strong>Giá mỗi đêm:</strong> ${fmtMoney(pricePerNight)}</p>
+                    <h4 style="margin-top:0; color:#003580;">Thông tin Khách sạn</h4>
+                    ${booking.ImageURL ? `
+                        <div style="margin-bottom:10px;">
+                            <img src="${booking.ImageURL}" alt="${booking.RoomName}" 
+                                 style="max-width:100%; max-height:200px; border-radius:6px; object-fit:cover; border:1px solid #ddd;">
+                        </div>
+                    ` : ''}
+                    <p><strong>Tên khách sạn:</strong> ${booking.RoomName}</p>
+                    ${booking.Address ? `<p><strong>Địa chỉ:</strong> ${booking.Address}</p>` : ''}
+                    ${booking.CategoryName ? `<p><strong>Danh mục:</strong> ${booking.CategoryName}</p>` : ''}
                 </div>
+                
+                ${booking.RoomTypeName ? `
+                <div style="background:#f8f9fa; padding:15px; border-radius:6px; margin-bottom:20px;">
+                    <h4 style="margin-top:0; color:#003580;">Thông tin Loại phòng</h4>
+                    <p><strong>Tên loại phòng:</strong> ${booking.RoomTypeName}</p>
+                    <p><strong>Giá mỗi đêm:</strong> ${fmtMoney(pricePerNight)}</p>
+                    ${booking.Area ? `<p><strong>Diện tích:</strong> ${booking.Area} m²</p>` : ''}
+                    ${booking.MaxGuests ? `<p><strong>Số khách tối đa:</strong> ${booking.MaxGuests} người</p>` : ''}
+                    ${booking.BedType ? `<p><strong>Loại giường:</strong> ${booking.BedType}</p>` : ''}
+                    ${booking.BedCount ? `<p><strong>Số giường:</strong> ${booking.BedCount}</p>` : ''}
+                    ${booking.AvailableRooms !== null && booking.AvailableRooms !== undefined ? `<p><strong>Số phòng còn trống:</strong> ${booking.AvailableRooms} phòng</p>` : ''}
+                </div>
+                ` : ''}
                 
                 ${booking.DepositAmount && booking.DepositAmount > 0 ? `
                 <div style="background:#fff3cd; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #ffc107;">
@@ -1010,14 +1029,26 @@ async function viewBookingDetail(bookingId) {
                 </div>
                 ` : ''}
                 
-                ${booking.CheckInConfirmed || booking.CheckOutConfirmed || booking.RoomInspection ? `
                 <div style="background:#e7f3ff; padding:15px; border-radius:6px; margin-bottom:20px; border-left:4px solid #007bff;">
                     <h4 style="margin-top:0; color:#003580;"><i class="fas fa-user-tie"></i> Trạng thái Xác nhận của Nhân viên</h4>
-                    ${booking.CheckInConfirmed ? `<p><strong>Check-in:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in + thanh toán</span></p>` : '<p><strong>Check-in:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
-                    ${booking.CheckOutConfirmed ? `<p><strong>Check-out:</strong> <span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span></p>` : '<p><strong>Check-out:</strong> <span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span></p>'}
-                    ${booking.RoomInspection ? `<p><strong>Kiểm tra phòng:</strong><br><span style="background:white; padding:10px; border-radius:4px; display:inline-block; margin-top:5px; border:1px solid #ddd;">${booking.RoomInspection}</span></p>` : ''}
+                    <p><strong>Check-in:</strong> 
+                        ${booking.CheckInConfirmed ? 
+                            '<span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận Check-in + thanh toán</span>' : 
+                            '<span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span>'
+                        }
+                    </p>
+                    <p><strong>Check-out:</strong> 
+                        ${booking.CheckOutConfirmed ? 
+                            '<span style="color:#28a745;"><i class="fas fa-check-circle"></i> Đã xác nhận</span>' : 
+                            '<span style="color:#999;"><i class="fas fa-clock"></i> Chưa xác nhận</span>'
+                        }
+                    </p>
+                    ${booking.RoomInspection ? `
+                        <p><strong>Kiểm tra phòng:</strong><br>
+                            <span style="background:white; padding:10px; border-radius:4px; display:inline-block; margin-top:5px; border:1px solid #ddd; white-space:pre-wrap;">${booking.RoomInspection}</span>
+                        </p>
+                    ` : '<p><strong>Kiểm tra phòng:</strong> <span style="color:#999;">Chưa có ghi chú</span></p>'}
                 </div>
-                ` : ''}
                 
                 <div style="background:#f8f9fa; padding:15px; border-radius:6px; margin-bottom:20px;">
                     <h4 style="margin-top:0; color:#003580;">Chi tiết đặt phòng</h4>
@@ -1046,9 +1077,13 @@ async function viewBookingDetail(bookingId) {
                 
                 <div style="background:#e3f2fd; padding:15px; border-radius:6px;">
                     <h4 style="margin-top:0; color:#003580;">Tóm tắt giá</h4>
-                    <p><strong>Giá cơ bản:</strong> ${fmtMoney(basePrice)}</p>
-                    <p><strong>Thuế (8%):</strong> ${fmtMoney(tax)}</p>
-                    <p style="font-size:18px; font-weight:bold; color:#d4111e; margin-top:10px;"><strong>Tổng cộng:</strong> ${fmtMoney(total)}</p>
+                    <p><strong>Giá cơ bản (${nights} đêm x ${rooms} phòng):</strong> ${fmtMoney(basePrice)}</p>
+                    <p><strong>Thuế và phí (8%):</strong> ${fmtMoney(tax)}</p>
+                    <p style="font-size:18px; font-weight:bold; color:#d4111e; margin-top:10px; border-top:2px solid #0071c2; padding-top:10px;"><strong>Tổng cộng:</strong> ${fmtMoney(total)}</p>
+                    ${booking.DepositAmount && booking.DepositAmount > 0 ? `
+                        <p style="margin-top:10px;"><strong>Số tiền đã đặt cọc:</strong> <span style="color:#28a745; font-weight:bold;">${fmtMoney(booking.DepositAmount)}</span></p>
+                        <p style="font-size:16px; font-weight:bold; color:#dc3545; margin-top:10px; border-top:1px solid #ddd; padding-top:10px;"><strong>Số tiền còn lại phải trả:</strong> ${fmtMoney(total - booking.DepositAmount)}</p>
+                    ` : ''}
                 </div>
             </div>
         `;
